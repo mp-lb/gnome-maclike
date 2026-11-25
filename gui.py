@@ -91,7 +91,7 @@ class Window(Adw.ApplicationWindow):
         self.shortcuts_page()
         self.wallpaper_page()
         self.dock_page()
-        self.restore_page()
+        self.troubleshooting_page()
         for row in self.switches.values():
             row.connect('notify::active', lambda *_: self.selection_changed())
         self.hardware.connect('notify::selected', lambda *_: self.selection_changed())
@@ -146,7 +146,7 @@ class Window(Adw.ApplicationWindow):
         page = self.page('Keyboard', 'input-keyboard-symbolic',
                          'Enable your saved keyboard, dock and wallpaper choices. Disable restores your previous setup.')
         group = self.group(page, 'MacLike')
-        self.status_row = Adw.ActionRow(title='Not checked', subtitle='Doctor checks whether your enabled preference is working.')
+        self.status_row = Adw.ActionRow(title='Not checked', subtitle='Check health to see whether MacLike is working correctly.')
         self.apply_button = button('Enable', self.apply_keyboard, 'suggested-action')
         self.stop_button = button('Disable', lambda: self.work(self.backend.stop))
         for control in (self.stop_button, self.apply_button):
@@ -415,9 +415,13 @@ class Window(Adw.ApplicationWindow):
         self.dock_status = label('No dock changes recorded.', 'dim-label')
         page.append(self.dock_status)
 
-    def restore_page(self):
-        page = self.page('Doctor', 'applications-engineering-symbolic', 'Check your setup, inspect its history, or remove it completely.')
-        group = self.group(page, 'Your exit routes')
+    def troubleshooting_page(self):
+        page = self.page('Troubleshooting', 'help-browser-symbolic', 'Check whether MacLike is working, undo its changes, or remove it completely.')
+        group = self.group(page, 'Health check')
+        self.check_button = self.action_row(group, 'Check MacLike’s health',
+                        'Use this if something is not working as expected. It checks your setup without changing it; you do not need to run it regularly.',
+                        'Check health', self.refresh, managed=False)
+        group = self.group(page, 'Disable or uninstall')
         self.recovery_controls.append(self.action_row(group, 'Disable MacLike', 'Restores keyboard, dock and wallpaper settings and keeps automatic startup off. Your MacLike choices are saved for the next Enable.',
                         'Disable', lambda: self.work(self.backend.stop), managed=False))
         self.recovery_controls.append(self.action_row(group, 'Uninstall GNOME MacLike', 'Disables startup, removes the system integration, restores managed settings and removes installed files and saved choices. Your wallpaper images stay untouched.',
@@ -426,10 +430,6 @@ class Window(Adw.ApplicationWindow):
                           'If you change a managed setting elsewhere, its newer value is preserved. '
                           'Modified installation files and unknown files block removal instead of being deleted. '
                           'If authentication or cleanup fails, recovery records remain so you can retry.', 'dim-label'))
-        group = self.group(page, 'Troubleshooting')
-        self.check_button = self.action_row(group, 'Run Doctor',
-                        'Use this if something seems wrong or you changed settings outside MacLike. It only reads the current state; periodic checks are not needed.',
-                        'Run Doctor', self.refresh, managed=False)
         group = self.group(page, 'Footprint and recovery record')
         self.action_row(group, 'Inspect the saved record', 'Exact installed paths, original settings and managed appearance values.',
                         'View details', self.show_details, managed=False)
@@ -571,7 +571,7 @@ class Window(Adw.ApplicationWindow):
         for css in ('success', 'warning', 'dim-label'):
             self.health_icon.remove_css_class(css)
         self.health_icon.add_css_class({'healthy': 'success', 'attention': 'warning'}.get(info['kind'], 'dim-label'))
-        checked = f'Last checked at {self.checked_at}. For troubleshooting, run Doctor. Periodic checks are not needed.' if self.checked_at else 'No successful check in this window yet.'
+        checked = f'Last checked at {self.checked_at}. Use Check health in Troubleshooting if something seems wrong. Periodic checks are not needed.' if self.checked_at else 'No successful check in this window yet.'
         self.health_box.set_tooltip_text(info['message'] + '\n\n' + checked)
         self.banner.set_title(info['message'])
         self.banner.set_button_label(info.get('action_label', ''))
@@ -588,7 +588,7 @@ class Window(Adw.ApplicationWindow):
         elif action == 'apply':
             self.apply_keyboard()
         elif action == 'restore':
-            self.stack.set_visible_child_name('doctor')
+            self.stack.set_visible_child_name('troubleshooting')
 
     def sensitivity(self):
         idle = not self.busy and not self.refreshing
@@ -626,7 +626,7 @@ class Window(Adw.ApplicationWindow):
             GLib.idle_add(done, state, error)
         def done(state, error):
             self.refreshing = False
-            self.check_button.set_label('Run Doctor')
+            self.check_button.set_label('Check health')
             if self.busy:
                 return
             self.check_error = error

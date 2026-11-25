@@ -16,21 +16,21 @@ def lifecycle(state=None, error=None, dirty=False, operation_error=None):
         return dict(kind=kind, title=title, message=message, action=action,
                     action_label=action_label, banner=banner)
     if error:
-        return result('unknown', 'Status unavailable', 'Doctor could not finish. Your existing changes may still be active. Retry Doctor; Disable and Uninstall remain available. ' + error, 'check', 'Run Doctor')
+        return result('unknown', 'Status unavailable', 'The health check could not finish. Your existing changes may still be active. Try again; Disable and Uninstall remain available. ' + error, 'check', 'Check health')
     if state is None:
-        return result('unknown', 'Not checked', 'Existing changes may already be active. Run Doctor to load your saved choices and check the current state.', 'check', 'Run Doctor')
+        return result('unknown', 'Not checked', 'Existing changes may already be active. Check health to load your saved choices and see whether MacLike is working.', 'check', 'Check health')
     if operation_error:
-        return result('attention', 'Action incomplete', 'The last action did not finish. Recovery records were kept. Open Doctor to review or retry. ' + operation_error, 'restore', 'Open Doctor')
+        return result('attention', 'Action incomplete', 'The last action did not finish. Recovery records were kept. Open Troubleshooting to review or retry. ' + operation_error, 'restore', 'Open Troubleshooting')
     if not state['installed']:
         return result('attention', 'Not installed', 'Install MacLike to start making changes with a saved restoration record.', 'install', 'Install')
     if state.get('problems'):
-        return result('attention', 'Needs attention', ' '.join(state['problems']), 'restore', 'Open Doctor')
+        return result('attention', 'Needs attention', ' '.join(state['problems']), 'restore', 'Open Troubleshooting')
     if state.get('update'):
         return result('attention', 'Update needed', 'This copy differs from the installed version. Review the replacement options before continuing.', 'install', 'Review update')
     enabled = state.get('enabled', state.get('running', False))
     if not enabled and not state.get('running') and not state.get('bridge'):
         if state.get('appearance'):
-            return result('attention', 'Restoration incomplete', 'MacLike is disabled, but some tracked desktop changes remain. Disable retries restoration; Doctor shows the saved record.', 'restore', 'Open Doctor')
+            return result('attention', 'Restoration incomplete', 'MacLike is disabled, but some tracked desktop changes remain. Disable retries restoration; Troubleshooting shows the saved record.', 'restore', 'Open Troubleshooting')
         return result('off', 'Disabled', 'MacLike changes are off and will stay off at login. Your saved keyboard, dock and wallpaper choices are kept for the next Enable.', banner=False)
     if not state.get('adapter_ready', True):
         return result('attention', 'Keyboard unavailable', 'GNOME’s keyboard adapter is not available. After a first install, log out and back in, then check again. If you just unlocked, retry now. Dock and wallpaper controls remain available.', 'check', 'Retry check')
@@ -44,7 +44,7 @@ def lifecycle(state=None, error=None, dirty=False, operation_error=None):
         return result('attention', 'Enabled, but not running', 'Your enabled preference is saved, but the keyboard service stopped or failed to start. Enable retries it. Disable keeps it off.', 'apply', 'Enable')
     if not state['preferences']['layers']['command']:
         return result('healthy', 'Enabled', 'MacLike is enabled with the Command layer off. Your desktop choices remain applied; enable that layer to use its shortcuts.', banner=False)
-    return result('healthy', 'Enabled', 'MacLike is on. Keyboard shortcuts start automatically at login; your dock and wallpaper choices stay applied. You can close this window. Saved choices and tracked settings passed Doctor.', banner=False)
+    return result('healthy', 'Enabled', 'MacLike is on. Keyboard shortcuts start automatically at login; your dock and wallpaper choices stay applied. You can close this window. The health check found no problems.', banner=False)
 
 
 class Dashboard:

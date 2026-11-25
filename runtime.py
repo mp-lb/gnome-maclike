@@ -124,7 +124,7 @@ class Runtime:
             from control import Install
             from startup import Startup
             if not Startup(Install()).system_ready():
-                raise RuntimeError('System keyboard integration is incomplete. Open Doctor.')
+                raise RuntimeError('System keyboard integration is incomplete. Open Troubleshooting.')
         engine = ['/usr/bin/systemctl', '--no-ask-password', 'start', self.unit] if persistent else self.engine_command(apple, scope, generated=preferences is not None)
         # Validate with the actual upstream parser, without touching any input devices.
         compiled = None

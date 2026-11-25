@@ -36,7 +36,7 @@ class Preview(Application):
     def capture(self, window, index):
         """Render actual GTK pages for local visual checks; no desktop screenshots."""
         import ctypes
-        pages = ['keyboard', 'shortcuts', 'shortcuts-search', 'wallpapers', 'dock', 'doctor']
+        pages = ['keyboard', 'shortcuts', 'shortcuts-search', 'wallpapers', 'dock', 'troubleshooting']
         if index >= len(pages):
             # Exercise dependency controls without writing settings.
             window.switches['command'].set_active(False)

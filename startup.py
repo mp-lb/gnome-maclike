@@ -97,7 +97,7 @@ class Startup:
             if (any(p.is_symlink() for p in (path, *path.parents)) or not path.is_file()
                     or path.stat().st_uid != 0 or path.stat().st_mode & 0o022
                     or hashlib.sha256(path.read_bytes()).hexdigest() != info['files'][name]['sha256']):
-                raise RuntimeError('System keyboard integration is incomplete or modified. Use Doctor before changing it.')
+                raise RuntimeError('System keyboard integration is incomplete or modified. Check health in Troubleshooting before changing it.')
         return True
 
     def system_change(self, action):

@@ -23,7 +23,7 @@ Open the GUI as your normal user from this directory:
 python3 -B gui.py
 ```
 
-Choose **Run Doctor**, then **Install** (or **Update installation** for an older version), then
+Choose **Check health**, then **Install** (or **Update installation** for an older version), then
 **Enable** on the Keyboard page. Ubuntu requests administrator authorization once
 to provision the protected keyboard service. Later logins and normal enable/disable
 operations do not need authentication. Updates fetch and verify the
@@ -72,7 +72,7 @@ keyboard in the dashboard before enabling. Installation alone is inactive.
 
 **Enable** starts now and remembers future logins. **Disable** clears that intent
 before stopping, so an interrupted disable cannot restart remapping next login.
-**Doctor** checks saved intent, actual service state, file integrity and recovery
+**Check health** checks saved intent, actual service state, file integrity and recovery
 records; it does not silently repair or overwrite anything. **Uninstall** disables
 startup, removes the administrator-installed integration, restores tracked settings,
 and removes owned user files. Removing system integration requires authentication.
@@ -124,9 +124,9 @@ The header distinguishes **Not checked**, **Enabled** (green check, no banner),
 needs attention). A legacy session is labelled **Running for this login only**.
 When enabled and healthy, there is no redundant Enable/Reapply button; Disable is
 available. Edited choices expose **Save changes**. A failed operation stays visible
-with its explanation. Doctor compares file hashes, services, saved choices,
+with its explanation. The health check compares file hashes, services, saved choices,
 startup ownership and tracked desktop settings. Its timestamp is a snapshot, not
-continuous monitoring. The Doctor tab stays available before checks or after
+continuous monitoring. The Troubleshooting tab stays available before checks or after
 errors and contains Disable, history and Uninstall. Disable itself restores all managed settings.
 No duplicate recovery buttons appear in the header.
 
@@ -182,7 +182,7 @@ The log is local and user-writable, not a tamper-proof forensic record. Service
 exits outside the app (logout, emergency stop, crash) are observed by systemd, not
 continuously monitored by this optional dashboard.
 
-Export a copy from Doctor, or choose **Save history and uninstall** to include
+Export a copy from Troubleshooting, or choose **Save history and uninstall** to include
 the final uninstall result. Exports must use a new filename. A normal uninstall
 removes the internal history with the rest of the app; an explicitly exported
 copy is yours to keep. The CLI equivalent is
@@ -302,7 +302,7 @@ are root-owned; user-editable Python is never a permanent root entrypoint. The
 one-time administrator installer uses an isolated Python process and keeps a
 separate root-owned file manifest and write-ahead audit. Failed setup/removal can
 be retried; modified/unowned paths are preserved. Normal operation doesn't
-restart the engine after a crash or emergency stop: Doctor reports the mismatch.
+restart the engine after a crash or emergency stop: the health check reports the mismatch.
 
 The socket-mode Xremap client delegates launch requests to this adapter; it does
 not run them as root. No session D-Bus policy is modified. The adapter supplies

@@ -570,7 +570,7 @@ class Install:
                 pass
             time.sleep(0.5)
         else:
-            raise RuntimeError('GNOME adapter did not become ready. Open Doctor.')
+            raise RuntimeError('GNOME adapter did not become ready. Open Troubleshooting.')
         if Startup(self).load()['enabled']:
             self.start()
 
