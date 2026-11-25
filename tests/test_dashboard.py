@@ -122,6 +122,33 @@ class ProfileTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate(prefs)
 
+    def test_browser_control_tab_is_bounded_and_keeps_command_switching(self):
+        import re
+        for keyboard in ('pc', 'apple'):
+            prefs = copy.deepcopy(DEFAULTS)
+            prefs['keyboard'] = keyboard
+            prefs['excluded_apps'] = ['chromium']
+            profile = compile_profile(SOURCE, prefs)
+            rule = next(k for k in profile['keymap'] if k['name'] == 'Control Tab cycles browser tabs')
+            self.assertEqual(rule['mode'], 'default')
+            self.assertTrue(rule['exact_match'])
+            self.assertEqual(rule['remap'], {'Super_R-Tab': 'Ctrl_L-Tab', 'Super_R-Shift-Tab': 'Ctrl_L-Shift-Tab'})
+            self.assertEqual(rule['application']['not'], ['chromium'])
+            app = re.compile(rule['application']['only'][1:-1])
+            for name in ('Chromium', 'chromium-browser', 'Google-chrome', 'google-chrome-stable', 'google-chrome-beta', 'google-chrome-unstable'):
+                self.assertIsNotNone(app.fullmatch(name), name)
+            for name in ('', 'org.gnome.Terminal', 'org.gnome.Nautilus', 'Chatgpt', 'some-google-chrome-app'):
+                self.assertIsNone(app.fullmatch(name), name)
+            switcher = next(k for k in profile['keymap'] if k['name'] == 'Hold the native app switcher until Command is released')
+            self.assertEqual(switcher['mode'], 'command')
+            self.assertIn({'press': 'Super_L'}, switcher['remap']['Tab'])
+            prefs['layers']['desktop'] = False
+            self.assertIn(rule, compile_profile(SOURCE, prefs)['keymap'])
+            prefs['layers']['control'] = False
+            native = compile_profile(SOURCE, prefs)
+            self.assertFalse(any(k['name'] == rule['name'] for k in native['keymap']))
+            self.assertEqual(native['modmap'][0]['remap']['Ctrl_L'], 'Ctrl_L')
+
     def test_overview_uses_physical_control_in_both_app_categories(self):
         prefs = copy.deepcopy(DEFAULTS)
         for separate in (False, True):

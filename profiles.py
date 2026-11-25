@@ -6,7 +6,7 @@ import re
 
 LAYERS = {
     'command': ('Command key', 'Left Alt becomes Command on PC keyboards; left Super becomes Option.'),
-    'control': ('Separate physical Control', 'Control becomes Super in apps. Standalone terminals keep Control.'),
+    'control': ('Separate physical Control', 'Control becomes Super in apps. Chrome/Chromium keeps Control-Tab for tabs. Standalone terminals keep Control.'),
     'terminal': ('Terminal shortcuts', 'Command-C/V copies and pastes; Command-T/W opens and closes tabs.'),
     'desktop': ('Desktop shortcuts', 'Command-Tab switches apps; Command-backtick cycles their windows. Q quits; H minimizes; Control-Command-Q locks. Control-Up: overview. Control-Down: show desktop.'),
     'navigation': ('Text navigation', 'Command-arrows: line/document edges. Option-arrows: words. Shift selects. Option-Backspace: delete a word. Command-Backspace: delete to line start in Chrome/Chromium and Codex.'),
@@ -56,6 +56,13 @@ def compile_profile(source, preferences):
             if prefs['excluded_apps']:
                 mapping['application']['not'] = prefs['excluded_apps']
         keymaps.append(mapping)
+    if layers['control']:
+        # Restore just Chrome's native tab chords after the physical-Control
+        # swap. Command uses a different mode, so Command+Tab stays app switching.
+        keymaps.append({'name': 'Control Tab cycles browser tabs', 'mode': 'default', 'exact_match': True,
+                        'application': {'only': '/(?i)^(chromium|chromium-browser|google-chrome|google-chrome-stable|google-chrome-beta|google-chrome-unstable)$/',
+                                        'not': prefs['excluded_apps']},
+                        'remap': {'Super_R-Tab': 'Ctrl_L-Tab', 'Super_R-Shift-Tab': 'Ctrl_L-Shift-Tab'}})
     if layers['desktop']:
         overview_match = {'only': '/.+/'}
         if prefs['excluded_apps']:

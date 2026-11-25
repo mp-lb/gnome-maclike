@@ -226,6 +226,7 @@ Control signal so terminal interrupts and Command shortcuts remain distinct.
 - Control+Command+Q: lock the screen through GNOME's screen-lock service.
   On a PC keyboard this is physical Control+left Alt+Q.
 - Physical Control+Up: open GNOME's overview; Control alone does nothing.
+- Physical Control+Tab / Shift+Control+Tab: next / previous tab in Chrome/Chromium.
 - Physical Control+Down: show desktop; press again to restore windows.
 - Command+Backspace: delete to line start in Chrome/Chromium and Codex text fields.
 - Physical Ctrl+Alt+Esc: emergency stop (Ctrl+Super+Esc also works).

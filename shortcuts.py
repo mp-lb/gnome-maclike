@@ -102,6 +102,10 @@ def build_catalog():
         ('zoom-in','+','Zoom in','Ctrl++'), ('zoom-out','-','Zoom out','Ctrl+-'), ('zoom-reset','0','Reset zoom','Ctrl+0')]:
         add(id, 'Cmd+'+keys, action, 'Tabs and browsing', 'base',
             'Sends '+target+'. Uses the browser’s Linux shortcut; other apps may differ. Terminal T/N/W have their own entries.', source='chrome')
+    for suffix, shift, action in [('', '', 'Next browser tab'), ('-back', 'Shift+', 'Previous browser tab')]:
+        add('control-tab'+suffix, 'Control+'+shift+'Tab', action, 'Tabs and browsing', 'mapped',
+            'Physical Control in Chrome/Chromium: sends native Ctrl+Tab or Ctrl+Shift+Tab. Command+Tab still switches apps. App exclusions disable this exception. With Separate physical Control off, these work natively.',
+            'control', 'chrome', [('Control Tab cycles browser tabs', 'Super_R-'+('Shift-' if shift else '')+'Tab')])
     for digit in range(1,10):
         add('tab-'+str(digit), 'Cmd+'+str(digit), 'Last tab' if digit==9 else 'Tab '+str(digit),
             'Tabs and browsing', 'base', 'Sends Ctrl+'+str(digit)+'. Uses the browser’s tab selection convention.', source='chrome')

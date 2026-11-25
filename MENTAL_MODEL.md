@@ -159,7 +159,11 @@ Super in ordinary applications so that Control+A/T do not duplicate Command+A/T.
 It can therefore invoke desktop actions. In recognized standalone terminals it
 stays Control. Disabling this layer preserves physical Control, but accepts the
 duplicate application shortcuts. This is a product tradeoff, not full macOS
-Control-key emulation.
+Control-key emulation. One bounded exception restores physical Control+Tab and
+Control+Shift+Tab in Chrome/Chromium to their native tab-switching chords. It
+belongs to the separate-Control layer, respects app exclusions, and only runs
+outside Command mode. Command+Tab therefore remains app switching. No browser
+extension or tab enumeration is involved; other apps retain their existing rules.
 
 **Terminal handling is a category exception.** The emulator handles clipboard
 shortcuts before passing terminal input onward. Conventional Control+C can then

@@ -78,6 +78,10 @@ catalog does not fix them or certify live behavior.
 implemented. The base swap may still emit a combination for a planned or excluded
 entry, so those labels do not mean the physical keys are disabled or harmless.
 
+Physical Control+Tab and Control+Shift+Tab now use Chrome/Chromium's native
+next/previous tab bindings. This small exception belongs to the separate-Control
+layer and respects application exclusions; Command+Tab still switches apps.
+
 Command+Backspace now uses the native Control+Shift+Backspace binding in
 Chrome/Chromium and Codex (Chatgpt app), documented
 in [Chromium's editing implementation](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/third_party/blink/renderer/core/editing/editing_behavior.cc).
