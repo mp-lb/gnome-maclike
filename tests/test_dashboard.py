@@ -310,7 +310,7 @@ class RestorationTests(unittest.TestCase):
         prefs = copy.deepcopy(DEFAULTS)
         prefs['layers']['navigation'] = False
         manifest = install.record.read_bytes()
-        with patch('dashboard.preflight'), patch.object(install, 'start', side_effect=RuntimeError('Authentication cancelled')):
+        with patch('dashboard.preflight'), patch.object(install, 'enable', side_effect=RuntimeError('Authentication cancelled')):
             with self.assertRaisesRegex(RuntimeError, 'Authentication cancelled'):
                 Dashboard(install).apply_keyboard(prefs)
         self.assertEqual(install.record.read_bytes(), manifest)

@@ -144,11 +144,11 @@ class Window(Adw.ApplicationWindow):
 
     def keyboard_page(self):
         page = self.page('Keyboard', 'input-keyboard-symbolic',
-                         'A small set of layers. Apply when ready; Stop restores native key behavior.')
-        group = self.group(page, 'Session')
-        self.status_row = Adw.ActionRow(title='Keyboard stopped', subtitle='Nothing starts automatically at login.')
-        self.apply_button = button('Apply and start', self.apply_keyboard, 'suggested-action')
-        self.stop_button = button('Stop', lambda: self.work(self.backend.stop))
+                         'Enable once. Your keyboard choices stay on across logins until you Disable.')
+        group = self.group(page, 'Keyboard preference')
+        self.status_row = Adw.ActionRow(title='Not checked', subtitle='Doctor checks whether your enabled preference is working.')
+        self.apply_button = button('Enable', self.apply_keyboard, 'suggested-action')
+        self.stop_button = button('Disable', lambda: self.work(self.backend.stop))
         for control in (self.stop_button, self.apply_button):
             control.set_valign(Gtk.Align.CENTER)
             self.status_row.add_suffix(control)
@@ -157,7 +157,7 @@ class Window(Adw.ApplicationWindow):
         self.hardware = Adw.ComboRow(title='Keyboard layout', model=Gtk.StringList.new(['PC keyboard', 'Apple keyboard']))
         self.hardware.set_subtitle('On PC keyboards, left Alt is Command and left Super is Option.')
         group.add(self.hardware)
-        group = self.group(page, 'Mapping layers', 'Changes take effect when you apply them.')
+        group = self.group(page, 'Mapping layers', 'Choose your layers, then Enable or Save changes.')
         for key, (title, subtitle) in LAYERS.items():
             row = Adw.SwitchRow(title=title, subtitle=subtitle, active=True)
             row.set_subtitle_lines(0)
@@ -416,22 +416,22 @@ class Window(Adw.ApplicationWindow):
         page.append(self.dock_status)
 
     def restore_page(self):
-        page = self.page('Restore', 'edit-undo-symbolic', 'See what the app owns, and undo it without guessing.')
+        page = self.page('Doctor', 'applications-engineering-symbolic', 'Check your setup, inspect its history, or remove it completely.')
         group = self.group(page, 'Your exit routes')
-        self.recovery_controls.append(self.action_row(group, 'Stop keyboard changes', 'Stops remapping and restores our saved overview-key setting. Wallpaper and dock stay as they are.',
-                        'Stop keyboard', lambda: self.work(self.backend.stop), managed=False))
-        self.recovery_controls.append(self.action_row(group, 'Restore all changes', 'Stops remapping and restores our keyboard, dock and wallpaper settings. Keeps the application installed.',
+        self.recovery_controls.append(self.action_row(group, 'Disable keyboard changes', 'Keeps shortcuts off now and at future logins. Restores the saved overview-key setting. Wallpaper and dock stay as they are.',
+                        'Disable', lambda: self.work(self.backend.stop), managed=False))
+        self.recovery_controls.append(self.action_row(group, 'Restore all changes', 'Disables automatic startup and restores our keyboard, dock and wallpaper settings. Keeps the application installed.',
                         'Restore all', lambda: self.confirm('Restore your previous settings?', 'Stop keyboard remapping and restore the settings saved before MacLike changed them? Newer external edits will be preserved.', self.backend.restore), managed=False))
-        self.recovery_controls.append(self.action_row(group, 'Uninstall GNOME MacLike', 'Stops both services, restores managed settings and removes installed files and saved choices. Your wallpaper images stay untouched.',
+        self.recovery_controls.append(self.action_row(group, 'Uninstall GNOME MacLike', 'Disables startup, removes the system integration, restores managed settings and removes installed files and saved choices. Your wallpaper images stay untouched.',
                         'Uninstall', self.uninstall_clicked, 'destructive-action', managed=False))
         page.append(label('Restoration means your values from before this app changed them—not factory defaults. '
                           'If you change a managed setting elsewhere, its newer value is preserved. '
                           'Modified installation files and unknown files block removal instead of being deleted. '
                           'If authentication or cleanup fails, recovery records remain so you can retry.', 'dim-label'))
         group = self.group(page, 'Troubleshooting')
-        self.check_button = self.action_row(group, 'Check current status',
+        self.check_button = self.action_row(group, 'Run Doctor',
                         'Use this if something seems wrong or you changed settings outside MacLike. It only reads the current state; periodic checks are not needed.',
-                        'Check status', self.refresh, managed=False)
+                        'Run Doctor', self.refresh, managed=False)
         group = self.group(page, 'Footprint and recovery record')
         self.action_row(group, 'Inspect the saved record', 'Exact installed paths, original settings and managed appearance values.',
                         'View details', self.show_details, managed=False)
@@ -439,9 +439,10 @@ class Window(Adw.ApplicationWindow):
                         'View history', lambda: self.show_details(history=True), managed=False)
         self.action_row(group, 'Keep a copy of the history', 'Exports a private local JSON Lines file. Normal uninstall removes the app’s internal log.',
                         'Export…', self.export_history, managed=False)
-        page.append(label('No packages, device-permission rules, startup services or boot settings are installed. '
-                          'The remapper runs only after you start it and ends at logout. Closing this window '
-                          'does not stop an active keyboard session. Physical Ctrl+Alt+Esc is the emergency stop.', 'dim-label'))
+        page.append(label('Enable installs a tracked login hook and a protected keyboard service. First setup and '
+                          'removal need administrator authentication; normal logins do not. Disable removes the login hook. '
+                          'Uninstall removes the system integration too. Closing this window keeps your preference. '
+                          'Physical Ctrl+Alt+Esc stops this session without automatically restarting it.', 'dim-label'))
         group = self.group(page, 'If this window will not open',
                            'Physical Ctrl+Alt+Esc stops the remapper. To restore settings and uninstall afterward, run this in a normal terminal. Ubuntu may request authentication.')
         app_path = getattr(getattr(self.backend, 'install', None), 'app', Path.home()/'.local/share/gnome-maclike')
@@ -555,7 +556,8 @@ class Window(Adw.ApplicationWindow):
                    and self.state.get('bridge') and self.state.get('adapter_ready', True)
                    and not self.state.get('pending_keyboard') and not dirty
                    and not self.state.get('problems') and not self.state.get('update'))
-        self.apply_button.set_label('Reapply' if applied else 'Apply changes' if self.state.get('running') else 'Apply and start')
+        self.apply_button.set_label('Save changes' if dirty and self.state.get('enabled') else 'Enable')
+        self.apply_button.set_visible(not (applied and self.state.get('enabled')))
         if applied:
             self.apply_button.remove_css_class('suggested-action')
         else:
@@ -571,7 +573,7 @@ class Window(Adw.ApplicationWindow):
         for css in ('success', 'warning', 'dim-label'):
             self.health_icon.remove_css_class(css)
         self.health_icon.add_css_class({'healthy': 'success', 'attention': 'warning'}.get(info['kind'], 'dim-label'))
-        checked = f'Last checked at {self.checked_at}. For troubleshooting, use Check status in Restore. Periodic checks are not needed.' if self.checked_at else 'No successful check in this window yet.'
+        checked = f'Last checked at {self.checked_at}. For troubleshooting, run Doctor. Periodic checks are not needed.' if self.checked_at else 'No successful check in this window yet.'
         self.health_box.set_tooltip_text(info['message'] + '\n\n' + checked)
         self.banner.set_title(info['message'])
         self.banner.set_button_label(info.get('action_label', ''))
@@ -588,15 +590,17 @@ class Window(Adw.ApplicationWindow):
         elif action == 'apply':
             self.apply_keyboard()
         elif action == 'restore':
-            self.stack.set_visible_child_name('restore')
+            self.stack.set_visible_child_name('doctor')
 
     def sensitivity(self):
         idle = not self.busy and not self.refreshing
         enabled = bool(self.state.get('installed')) and not self.state.get('update') and not self.state.get('problems') and not self.check_error and idle
         for control in self.guarded:
             control.set_sensitive(enabled)
-        self.apply_button.set_sensitive(enabled and self.state.get('adapter_ready', True))
-        self.stop_button.set_sensitive(idle and (bool(self.state.get('running')) or bool(self.state.get('bridge')) or self.check_error is not None))
+        self.apply_button.set_sensitive(bool(self.state.get('installed')) and not self.state.get('update')
+                                        and self.state.get('can_enable', not self.state.get('problems'))
+                                        and not self.check_error and idle)
+        self.stop_button.set_sensitive(idle and (bool(self.state.get('enabled')) or bool(self.state.get('running')) or bool(self.state.get('bridge')) or self.check_error is not None))
         for control in self.recovery_controls:
             control.set_sensitive(idle)
         self.hardware.set_sensitive(enabled)
@@ -624,7 +628,7 @@ class Window(Adw.ApplicationWindow):
             GLib.idle_add(done, state, error)
         def done(state, error):
             self.refreshing = False
-            self.check_button.set_label('Check status')
+            self.check_button.set_label('Run Doctor')
             if self.busy:
                 return
             self.check_error = error

@@ -7,6 +7,7 @@ import subprocess
 from control import APP_FILES, Install, engine_payload, preflight
 from preferences import Appearance, read_preferences, save_preferences
 from profiles import validate
+from startup import Startup
 
 
 def lifecycle(state=None, error=None, dirty=False, operation_error=None):
@@ -15,26 +16,33 @@ def lifecycle(state=None, error=None, dirty=False, operation_error=None):
         return dict(kind=kind, title=title, message=message, action=action,
                     action_label=action_label, banner=banner)
     if error:
-        return result('unknown', 'Status unavailable', 'The check failed. Your existing changes may still be active. Retry the check or open Restore. ' + error, 'check', 'Retry check')
+        return result('unknown', 'Status unavailable', 'Doctor could not finish. Your existing changes may still be active. Retry Doctor; Disable and Uninstall remain available. ' + error, 'check', 'Run Doctor')
     if state is None:
-        return result('unknown', 'Not checked', 'Existing changes may already be active. Check status to see what is running and load your saved choices.', 'check', 'Check status')
+        return result('unknown', 'Not checked', 'Existing changes may already be active. Run Doctor to load your saved choices and check the current state.', 'check', 'Run Doctor')
     if operation_error:
-        return result('attention', 'Action incomplete', 'The last action did not finish. Recovery records were kept. Open Restore to review or retry. ' + operation_error, 'restore', 'Open Restore')
+        return result('attention', 'Action incomplete', 'The last action did not finish. Recovery records were kept. Open Doctor to review or retry. ' + operation_error, 'restore', 'Open Doctor')
     if not state['installed']:
         return result('attention', 'Not installed', 'Install MacLike to start making changes with a saved restoration record.', 'install', 'Install')
     if state.get('problems'):
-        return result('attention', 'Needs attention', ' '.join(state['problems']), 'restore', 'Open Restore')
+        return result('attention', 'Needs attention', ' '.join(state['problems']), 'restore', 'Open Doctor')
     if state.get('update'):
         return result('attention', 'Update needed', 'This copy differs from the installed version. Review the replacement options before continuing.', 'install', 'Review update')
+    enabled = state.get('enabled', state.get('running', False))
+    if not enabled and not state.get('running') and not state.get('bridge'):
+        return result('off', 'Disabled', 'Keyboard changes are off and will stay off at login. Dock and wallpaper choices remain applied. Enable starts the keyboard now and at future logins.', banner=False)
     if not state.get('adapter_ready', True):
         return result('attention', 'Keyboard unavailable', 'GNOME’s keyboard adapter is not available. After a first install, log out and back in, then check again. If you just unlocked, retry now. Dock and wallpaper controls remain available.', 'check', 'Retry check')
     if state.get('running') != state.get('bridge'):
-        return result('attention', 'Keyboard interrupted', 'Part of the keyboard session stopped. Apply and restart to restore it, or use Stop keyboard changes in Restore.', 'apply', 'Apply and restart')
+        return result('attention', 'Keyboard interrupted', 'Part of the keyboard service stopped. Enable restarts your saved setup; Disable keeps it off.', 'apply', 'Enable')
     if dirty or state.get('pending_keyboard'):
-        return result('attention', 'Changes not applied', 'Your selected keyboard settings differ from the running session. Apply them to make them active.', 'apply', 'Apply changes')
-    if not state.get('running') or not state['preferences']['layers']['command']:
-        return result('off', 'Keyboard off', 'Native keyboard behavior is in use. Dock and wallpaper changes stay applied. Choose your layers and Apply and start when ready. Nothing starts automatically at login.', banner=False)
-    return result('healthy', 'Active', 'Keyboard session and desktop adapter are running. Saved keyboard choices are applied; installed files and tracked desktop settings passed this check.', banner=False)
+        return result('attention', 'Unsaved changes', 'Save your keyboard choices to use them now and at future logins.', 'apply', 'Save changes')
+    if not enabled:
+        return result('attention', 'Running for this login only', 'Enable remembers this choice and starts your keyboard automatically at future logins.', 'apply', 'Enable')
+    if not state.get('running'):
+        return result('attention', 'Enabled, but not running', 'Your enabled preference is saved, but the keyboard service stopped or failed to start. Enable retries it. Disable keeps it off.', 'apply', 'Enable')
+    if not state['preferences']['layers']['command']:
+        return result('off', 'Enabled, layers off', 'Automatic startup is enabled, but the Command layer is off. Enable that layer to use the shortcuts, or Disable automatic startup.', banner=False)
+    return result('healthy', 'Enabled', 'Keyboard changes are running and will start automatically at login. You can close this window. Saved choices, installed files and tracked settings passed Doctor.', banner=False)
 
 
 class Dashboard:
@@ -62,7 +70,20 @@ class Dashboard:
         journal = appearance.load()
         problems = []
         pending_keyboard = False
+        startup = Startup(install)
+        enabled = False
+        startup_problem = ''
         if present:
+            try:
+                startup_state = startup.load()
+                enabled = startup_state['enabled']
+                startup.verify(startup_state)
+                if enabled and not startup.system_ready():
+                    startup_problem = 'Automatic startup is enabled but system setup is missing. Enable completes the setup; Disable keeps it off.'
+                    problems.append(startup_problem)
+            except (OSError, RuntimeError, ValueError) as exc:
+                startup_problem = str(exc)
+                problems.append(startup_problem)
             install.audit.text()  # An unreadable recovery history must not look healthy.
             if (install.record_dir / 'staging').exists():
                 problems.append('An installation update was interrupted. Keep the recovery record and finish the same update before starting again.')
@@ -81,7 +102,8 @@ class Dashboard:
                     problems.append('The running keyboard configuration could not be verified. Stop the session, then apply your saved choices again.')
         gallery_folder = prefs['wallpaper_folder'] or next((str(p) for p in
             (Path.home()/'Pictures/Wallpapers', Path.home()/'Downloads/wallpapers', Path.home()/'Downloads/wp') if p.is_dir()), '')
-        return {'installed': present, 'update': bool(update), 'problems': problems,
+        return {'installed': present, 'update': bool(update), 'problems': problems, 'enabled': enabled,
+                'can_enable': not problems or problems == [startup_problem],
                 'gallery_folder': gallery_folder,
                 'pending_keyboard': pending_keyboard,
                 'running': state.get('ActiveState') == 'active',
@@ -100,7 +122,7 @@ class Dashboard:
             self.install.uninstall()
         self.install.engine = payload
         self.install.install()
-        return 'Installed. Choose your layers, then Apply and start. A first installation may need a logout/login.'
+        return 'Installed. Choose your layers, then Enable. A first installation may need a logout/login.'
 
     def apply_keyboard(self, preferences):
         preferences = validate(preferences)
@@ -110,13 +132,12 @@ class Dashboard:
         with self.install.operation():
             self.install.stop()
             save_preferences(self.install.record_dir, preferences)
-        self.install.start()
-        return 'Keyboard layers are running. Stop returns the keyboard to its original behavior.'
+        self.install.enable()
+        return 'Enabled. Keyboard choices are active now and will start automatically at login. You can close this window.'
 
     def stop(self):
-        with self.install.operation():
-            self.install.stop()
-        return 'Keyboard remapping stopped. Native key behavior is restored.'
+        self.install.disable()
+        return 'Disabled. Native keyboard behavior is restored; automatic startup is off. Your saved choices are kept.'
 
     def appearance(self, action, value=None):
         if not self.install.record.exists():
@@ -144,8 +165,8 @@ class Dashboard:
                 save_preferences(self.install.record_dir, prefs)
 
     def restore(self):
+        self.install.disable()
         with self.install.operation():
-            self.install.stop()
             skipped = Appearance(self.install.record_dir).restore()
         return ('Keyboard stopped and managed appearance restored.' +
                 (' Newer external changes were preserved.' if skipped else ''))
@@ -173,5 +194,8 @@ class Dashboard:
                  str(install.record_dir / 'preferences.json'), str(install.record_dir / 'appearance.json'),
                  '', 'Original GNOME extension settings', json.dumps(info['desktop'], indent=2),
                  '', 'Appearance changes (before → applied)', json.dumps(Appearance(install.record_dir).load(), indent=2),
-                 '', 'Runtime only', install.runtime.unit, install.runtime.bridge_unit, str(install.runtime.directory)]
+                 '', 'Login preference and owned integration', json.dumps(Startup(install).load(), indent=2),
+                 *[str(p) for p in Startup(install).paths.values()],
+                 *[str(p) for p in Startup(install).system_files().values()],
+                 '', 'Services and runtime', install.runtime.unit, install.runtime.bridge_unit, str(install.runtime.directory)]
         return '\n'.join(lines)

@@ -9,7 +9,7 @@ from profiles import DEFAULTS, validate
 from runtime import run
 from audit import Audit, NAME as AUDIT_NAME
 
-FILES = ('preferences.json', 'appearance.json', AUDIT_NAME)
+FILES = ('preferences.json', 'appearance.json', 'startup.json', AUDIT_NAME)
 DOCK = '/org/gnome/shell/extensions/dash-to-dock/'
 BACKGROUND = '/org/gnome/desktop/background/'
 OVERLAY = '/org/gnome/mutter/overlay-key'

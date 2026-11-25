@@ -23,9 +23,10 @@ Open the GUI as your normal user from this directory:
 python3 -B gui.py
 ```
 
-Choose **Check status**, then **Install** (or **Update installation** for an older version), then
-**Apply and start** on the Keyboard page. Ubuntu's normal authentication dialog
-handles starting/stopping the privileged remapper. Updates fetch and verify the
+Choose **Run Doctor**, then **Install** (or **Update installation** for an older version), then
+**Enable** on the Keyboard page. Ubuntu requests administrator authorization once
+to provision the protected keyboard service. Later logins and normal enable/disable
+operations do not need authentication. Updates fetch and verify the
 new binary before removing the old installation, then restore old managed
 settings and install inactive; saved layer choices reset. No terminal is needed
 after installation: open **GNOME MacLike** from the applications menu.
@@ -49,28 +50,33 @@ publication, retry the same command while stopped before starting again.
 
 The host must already provide Python GObject, GTK 4 and libadwaita 1.5+. No packages
 are installed. Keyboard remapping runs independently of the window: closing the
-dashboard does not stop it. **Stop** restores the original keyboard behavior.
-Nothing starts automatically at login. GUI controls and generated configurations
+dashboard does not stop it. **Enable** persists across login and reboot. **Disable**
+restores native keyboard behavior and removes automatic startup; saved layers are
+kept. Dock and wallpaper choices remain applied until explicitly restored. GUI controls and generated configurations
 do not overwrite any GNOME keybinding settings.
 
 The backend CLI remains available for recovery and automation:
 
 ```sh
 python3 -B control.py install
-python3 -B control.py start
-python3 -B control.py stop
+python3 -B control.py enable
+python3 -B control.py disable
+python3 -B control.py doctor
 python3 -B control.py uninstall
 ```
 
 First installation may require logging out and back in so GNOME recognizes the
-extension. Its launcher also has Stop and Uninstall actions.
-Use `start --apple` for an Apple keyboard; the default is a PC keyboard.
-Installation is inactive, and startup is manual on every login.
+extension. Its launcher also has Disable and Uninstall actions. Choose PC or Apple
+keyboard in the dashboard before enabling. Installation alone is inactive.
 
-Starting requests administrator authorization through the desktop's normal
-Polkit prompt. Stopping or uninstalling an active session also requests it.
-**Physical Ctrl+Alt+Esc** exits Xremap directly, without an authentication prompt.
-Once Xremap has exited, uninstall requires no administrator access.
+**Enable** starts now and remembers future logins. **Disable** clears that intent
+before stopping, so an interrupted disable cannot restart remapping next login.
+**Doctor** checks saved intent, actual service state, file integrity and recovery
+records; it does not silently repair or overwrite anything. **Uninstall** disables
+startup, removes the administrator-installed integration, restores tracked settings,
+and removes owned user files. Removing system integration requires authentication.
+**Physical Ctrl+Alt+Esc** exits Xremap without a prompt. It stays stopped for this
+login; it does not erase the enabled preference or cause an automatic restart loop.
 
 The supplied upstream binary is **Xremap 0.15.19, socket variant**, for x86_64 or
 ARM64. Its release archive SHA-256 is pinned in `control.py` and checked before
@@ -112,22 +118,16 @@ rules belong to Text navigation and respect application exclusions.
 Setup is checked only on request or after an explicit operation, never on startup
 or a polling timer. File reads and image decoding run off the GTK event loop.
 
-The header distinguishes **Not checked** (existing changes might already be
-active), **Active** (green check, no banner), **Keyboard off** (intentional native
-keyboard behavior; appearance changes remain), and **Needs attention** with a
-specific explanation and next action. Edited keyboard choices show **Changes not
-applied** until applied. Already-applied choices have a neutral **Reapply** button;
-pending choices or a stopped session have a primary Apply action. A failed
-operation remains visible after its status refresh. Checks compare installed
-file hashes, running services and saved keyboard
-choices, read recovery history, and compare tracked desktop settings. The timestamp
-is a snapshot, not continuous monitoring; recheck after changes outside the app.
-The Restore tab remains available before a check or after a failed check. Its
-Troubleshooting section contains an optional Check status action; periodic checks
-are not needed. The initial unchecked state and retryable check errors also offer
-a check action in their banner. The header contains only the status indicator,
-without duplicate Restore or Check status buttons. Restore includes an emergency-stop
-reminder and a terminal uninstall command for use if the GUI cannot open.
+The header distinguishes **Not checked**, **Enabled** (green check, no banner),
+**Disabled** (intentional, no banner), and **Enabled, but not running** (saved intent
+needs attention). A legacy session is labelled **Running for this login only**.
+When enabled and healthy, there is no redundant Enable/Reapply button; Disable is
+available. Edited choices expose **Save changes**. A failed operation stays visible
+with its explanation. Doctor compares file hashes, services, saved choices,
+startup ownership and tracked desktop settings. Its timestamp is a snapshot, not
+continuous monitoring. The Doctor tab stays available before checks or after
+errors and contains Disable, full settings restoration, history and Uninstall.
+No duplicate recovery buttons appear in the header.
 
 The image-only gallery reads local JPEG/PNG/WebP images, filters for at least
 5120×2880 landscape images, and shows names and resolution in the preview. A folder can show
@@ -189,7 +189,7 @@ copy is yours to keep. The CLI equivalent is
 
 The guarantee is restoration of the app's recorded before-state, with newer
 external changes preserved—not a reset of Ubuntu to factory defaults. The app
-owns its files, recovery state, extension and transient services. Shared system
+owns its files, recovery state, extension and optional login/system integration. Shared system
 journals, desktop caches and unrelated personal files are outside its ownership;
 it must not erase those to claim the machine has never run it. Source checkouts
 and explicitly exported history are also intentionally retained.
@@ -267,20 +267,38 @@ deleting modifications. A full reinstall records the chosen configuration in the
 same recovery manifest and retains the normal uninstall guarantees. There is no
 configuration auto-reload while keys are held.
 
+For the lifecycle migration, stop the old session and run
+`python3 -B refresh_gui.py --lifecycle`. This adds the startup modules and updates
+runtime/bridge/controller through the same retryable publication journal. It
+preserves keyboard choices, appearance baselines and history. Refresh the launcher
+with `control.py refresh-launcher`, then Enable. This does not provision system
+files until Enable explicitly requests administrator setup.
+
 ## Background operation and privilege boundary
 
-Start creates two **transient** systemd units:
+Enable provisions a fixed system service and a per-user graphical-login hook:
 
-- System `gnome-maclike-<uid>.service`: upstream Xremap, running as root to read
-  input devices and create a virtual keyboard. It is sandboxed with read-only
-  filesystem access, hidden home directories except our installed files/runtime
-  socket, Unix sockets only, and input/uinput device access. It is tied to the
-  graphical login session and stops on logout. It is not enabled at boot.
-- User `gnome-maclike-bridge.service`: a small Python socket adapter. It obtains
-  the focused app through our GNOME extension and accepts exactly two launch
-  requests, `gnome-maclike-quit` and `gnome-maclike-lock`. The latter calls
-  a fixed GNOME D-Bus method. It never executes supplied commands, reads
-  keyboard events, or sends window titles. It exits after observing Xremap stop.
+- System `gnome-maclike-<uid>.service`: root-owned pinned Xremap binary and fixed
+  command. It checks that this user has an active local Wayland session and owns
+  the runtime socket/config before starting. It is sandboxed with a read-only
+  filesystem, hidden home directories, Unix sockets and input/uinput device access.
+  It is not enabled at boot; it starts through the user's graphical login only.
+  It is bound to the user manager and stopped by the login service at logout.
+- User `gnome-maclike-session.service`: an on-demand oneshot started by a tracked
+  GNOME autostart entry. It waits briefly for the GNOME adapter, reads the saved
+  enabled preference, starts the keyboard, and stops it on graphical logout.
+- Transient user `gnome-maclike-bridge.service`: the existing unprivileged socket
+  adapter. It supplies focused-app context and only accepts the fixed quit/lock
+  requests. It never executes supplied commands or reads keyboard events.
+
+The narrowly scoped Polkit rule permits only start/stop of this user's fixed
+system unit. It does not allow arbitrary root commands, unit edits, daemon reloads
+or transient unit creation under new names. The engine and login-session check
+are root-owned; user-editable Python is never a permanent root entrypoint. The
+one-time administrator installer uses an isolated Python process and keeps a
+separate root-owned file manifest and write-ahead audit. Failed setup/removal can
+be retried; modified/unowned paths are preserved. Normal operation doesn't
+restart the engine after a crash or emergency stop: Doctor reports the mismatch.
 
 The socket-mode Xremap client delegates launch requests to this adapter; it does
 not run them as root. No session D-Bus policy is modified. The adapter supplies
@@ -288,7 +306,8 @@ no app context while locked. Losing the adapter does not itself stop the root
 engine: use the emergency chord or Stop if that happens.
 
 No packages, accounts, groups, udev rules, device ACLs, kernel modules, boot
-settings, shell configuration, or persistent system/user services are installed.
+settings or shell configuration are installed. The owned service files and
+login hook above are the only persistent background integration.
 The existing `/dev/uinput`, Python, GNOME tools, systemd and Polkit are required.
 Missing prerequisites cause a refusal. The remapper has keyboard access while
 running, as other system-wide remappers do. It does not log keystrokes; window
@@ -304,18 +323,25 @@ The persistent footprint is:
 - `${XDG_DATA_HOME}/gnome-shell/extensions/gnome-maclike@mp-lb.dev/`: JS and metadata.
 - `${XDG_DATA_HOME}/applications/gnome-maclike.desktop`.
 - `${XDG_STATE_HOME:-~/.local/state}/gnome-maclike/`: recovery manifest and
-  operation lock, mutable `preferences.json` for layer/gallery choices, and
+  operation lock, `startup.json` for enabled intent and login-file ownership,
+  mutable `preferences.json` for layer/gallery choices, and
   `appearance.json` for original/applied allowlisted desktop settings, and
   `audit.jsonl` for configuration history. Atomic
   writes may leave recoverable staging files during an interruption.
+- While enabled: `${XDG_CONFIG_HOME:-~/.config}/autostart/gnome-maclike.desktop`
+  and `${XDG_CONFIG_HOME}/systemd/user/gnome-maclike-session.service`.
+- Once provisioned: `/etc/systemd/system/gnome-maclike-<uid>.service`,
+  `/usr/share/polkit-1/rules.d/50-gnome-maclike-<uid>.rules`, and
+  `/var/lib/gnome-maclike-<uid>/` containing `xremap`, `check_session.py`,
+  `manifest.json` and `audit.jsonl`. Uninstall removes these; Disable leaves the
+  inactive system integration available for a later Enable without authentication.
 - Only our UUID membership in GNOME's enabled/disabled extension lists.
 
-While running, systemd additionally owns the two transient unit definitions and
+While running, systemd additionally owns the transient bridge definition and
 `/run/user/<uid>/gnome-maclike/desktop.sock`, generated `active.json` and a copy of
 the active preferences. Service stop/collection removes
 these. The kernel releases keyboard grabs and destroys the virtual device when
-Xremap exits. Uninstall checks service identity and waits for both units and the
-runtime directory to disappear **before removing installed files**. A denied
+Xremap exits. Uninstall checks service identity and waits for remapping and the runtime directory to stop/disappear **before removing installed files**. A denied
 stop, unresponsive service, or cleanup failure leaves the installation and
 recovery record available for retry.
 

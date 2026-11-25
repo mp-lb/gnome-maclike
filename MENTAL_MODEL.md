@@ -215,3 +215,20 @@ grabs; persistent managed changes use separate restoration records. The audit lo
 records configuration changes, not keystrokes. An accepted conflict must remain
 explainable and reversible, with original values retained if we change settings.
 See the [README's recovery and uninstall boundaries](README.md#audit-and-uninstall-guarantees).
+
+## Enabled is a preference, running is an observation
+
+Enable remembers intent across graphical logins. The window is only a dashboard;
+closing it has no lifecycle effect. Disable commits the off preference first,
+removes the login hook and stops remapping. Doctor compares that preference with
+actual service health. Enabled-but-stopped needs attention; disabled-and-stopped
+is healthy intentional behavior. Uninstall removes both user and administrator
+integration as well as restoring managed settings. Emergency stop ends this
+session without erasing the preference, and no automatic crash-restart loop runs.
+
+The login service is tied to GNOME's graphical session, not a boot-enabled global
+keyboard daemon. The fixed root engine starts only for an active local Wayland
+login. One-time administrator setup grants only start/stop of this exact service;
+normal logins need neither a password prompt nor a broadly privileged account.
+Startup publication and teardown have before/after audit records and strict
+ownership checks, including interrupted operations and external modifications.

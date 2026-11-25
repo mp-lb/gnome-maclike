@@ -19,7 +19,7 @@ class Backend:
         time.sleep(.4)
         prefs = copy.deepcopy(DEFAULTS)
         prefs['wallpaper_folder'] = str(folder)
-        return dict(installed=True, update=False, running=True, bridge=True,
+        return dict(installed=True, update=False, running=True, bridge=True, enabled=True,
                     preferences=prefs, appearance={})
 
 
@@ -53,18 +53,18 @@ class Check(Application):
                 assert window.refreshing
                 self.phase = 1
             elif self.phase == 1 and window.loaded and not window.gallery_loading:
-                assert window.health_label.get_text() == 'Active'
+                assert window.health_label.get_text() == 'Enabled'
                 assert not window.banner.get_revealed()
-                assert window.apply_button.get_label() == 'Reapply'
+                assert not window.apply_button.get_visible()
                 assert not window.apply_button.has_css_class('suggested-action')
                 window.switches['navigation'].set_active(False)
-                assert window.health_label.get_text() == 'Changes not applied'
+                assert window.health_label.get_text() == 'Unsaved changes'
                 assert window.banner.get_revealed()
-                assert window.apply_button.get_label() == 'Apply changes'
+                assert window.apply_button.get_label() == 'Save changes'
                 assert window.apply_button.has_css_class('suggested-action')
                 window.switches['navigation'].set_active(True)
                 assert not window.banner.get_revealed()
-                assert window.apply_button.get_label() == 'Reapply'
+                assert not window.apply_button.get_visible()
                 assert not window.apply_button.has_css_class('suggested-action')
                 window.check_error = 'Simulated failed check'
                 window.render_status(); window.sensitivity()

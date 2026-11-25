@@ -78,11 +78,13 @@ def refresh(install=None, dashboard=False):
     print('GUI updated. Restart the window; keyboard and desktop settings were preserved.')
 
 
-def refresh_dashboard(install, keyboard=False):
+def refresh_dashboard(install, keyboard=False, lifecycle=False):
     """Publish dashboard modules, optionally the profile compiler while stopped."""
-    allowed = DASHBOARD_FILES | ({'profiles.py'} if keyboard else set())
+    allowed = DASHBOARD_FILES | ({'profiles.py'} if keyboard or lifecycle else set())
+    if lifecycle:
+        allowed |= {'runtime.py', 'bridge.py', 'startup.py', 'system_setup.py'}
     with install.operation():
-        if keyboard:
+        if keyboard or lifecycle:
             install.runtime.ensure_absent()
         info = install.load()
         for root in (install.app, install.record_dir, install.record):
@@ -94,7 +96,7 @@ def refresh_dashboard(install, keyboard=False):
                 if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
                     raise RuntimeError(f'{name} also changed; use the full installer.')
         stage = install.record_dir / 'staging'
-        pending = stage / ('keyboard-update.json' if keyboard else 'dashboard-update.json')
+        pending = stage / ('lifecycle-update.json' if lifecycle else 'keyboard-update.json' if keyboard else 'dashboard-update.json')
         if os.path.lexists(stage):
             if stage.is_symlink() or pending.is_symlink() or not pending.is_file():
                 raise RuntimeError('Unfinished installation preserved; recover it first.')
@@ -166,8 +168,11 @@ if __name__ == '__main__':
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--dashboard', action='store_true', help='Also refresh dashboard backend and audit modules; never remapper code/configuration.')
     modes.add_argument('--keyboard', action='store_true', help='Also refresh profiles.py; requires the keyboard session to be stopped. Preserves preferences and restoration state.')
+    modes.add_argument('--lifecycle', action='store_true', help='Migrate session management while stopped, preserving choices, audit and restoration records.')
     args = parser.parse_args()
-    if args.keyboard:
+    if args.lifecycle:
+        refresh_dashboard(Install(), lifecycle=True)
+    elif args.keyboard:
         refresh_dashboard(Install(), keyboard=True)
     else:
         refresh(dashboard=args.dashboard)

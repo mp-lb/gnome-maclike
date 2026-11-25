@@ -12,7 +12,9 @@ https://github.com/mp-lb/gnome-maclike. Local checkout: `~/Work/gnome-maclike`.
 - Record configuration mutations in the local audit history before changing them,
   followed by observed results. Keep recovery baselines separate from history.
 - No background GUI polling, decoding or filesystem work on the GTK event loop.
-- No packages, permanent privileged services, udev rules or startup hooks installed.
+- No packages, udev rules or input-group membership changes. Explicit Enable may
+  provision the owned keyboard service and graphical-login hook. Track their
+  exact footprint; Disable removes automatic startup, Uninstall removes both.
 - User wallpapers and private machine state never belong in this repository.
 - No Fssstack, Electron, ArcNet, cloud resources or release publishing are configured.
 
@@ -53,3 +55,10 @@ explicit recoverable migration, not string replacement in installed manifests.
 updates, only with the keyboard session stopped. Retry interrupted publication
 with the same mode. Start the session afterward to compile the updated rules;
 preferences and restoration records persist.
+`--lifecycle` additionally migrates runtime/bridge and startup modules while
+stopped. Enable provisions the root-owned engine/condition, fixed unit and narrow
+Polkit rule once, plus user login files. Disable removes login files and keeps
+the inactive system integration; Uninstall removes it with authentication.
+Lifecycle changes require fault tests for partial publication/removal and must
+distinguish enabled intent from observed service health. Do not add auto-restart
+loops that defeat the emergency stop.

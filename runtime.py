@@ -42,16 +42,19 @@ class Runtime:
     def state(self, user=False):
         args = ['/usr/bin/systemctl'] + (['--user'] if user else [])
         output = run(args + ['show', self.bridge_unit if user else self.unit,
-                             '--property=LoadState,ActiveState,Description,Transient'])
+                             '--property=LoadState,ActiveState,Description,Transient,FragmentPath'])
         state = dict(line.split('=', 1) for line in output.splitlines() if '=' in line)
         if 'LoadState' not in state:
             raise RuntimeError('Could not determine background service state.')
-        if state['LoadState'] != 'not-found' and (state.get('Description') != self.description or state.get('Transient') != 'yes'):
+        persistent = (not user and state.get('Description') == f'GNOME MacLike managed keyboard {self.uid}'
+                      and state.get('Transient') == 'no'
+                      and state.get('FragmentPath') == f'/etc/systemd/system/{self.unit}')
+        if state['LoadState'] != 'not-found' and not persistent and (state.get('Description') != self.description or state.get('Transient') != 'yes'):
             raise RuntimeError('An unrelated service uses our name; refusing to change it.')
         return state
 
     def running(self):
-        return any(self.state(user)['LoadState'] != 'not-found' for user in (False, True))
+        return any(self.state(user).get('ActiveState') not in (None, 'inactive', 'failed') for user in (False, True))
 
     def ensure_absent(self):
         if self.running() or os.path.lexists(self.directory):
@@ -59,15 +62,18 @@ class Runtime:
 
     def wait_absent(self, user):
         for _ in range(50):
-            if self.state(user)['LoadState'] == 'not-found':
+            state = self.state(user)
+            if state['LoadState'] == 'not-found' or (not user and state.get('Transient') == 'no' and state.get('ActiveState') in ('inactive', 'failed')):
                 return
             time.sleep(0.1)
         raise RuntimeError('Service has not finished stopping; installation preserved.')
 
     def stop(self):
-        if self.state()['LoadState'] != 'not-found':
+        state = self.state()
+        if state['LoadState'] != 'not-found':
             # Polkit shows a normal desktop authentication prompt. No shell or sudo rule.
-            subprocess.run(['/usr/bin/pkexec', '/usr/bin/systemctl', 'stop', self.unit], check=True)
+            args = ['/usr/bin/systemctl', '--no-ask-password', 'stop', self.unit] if state.get('Transient') == 'no' else ['/usr/bin/pkexec', '/usr/bin/systemctl', 'stop', self.unit]
+            subprocess.run(args, check=True)
             self.wait_absent(False)
         if self.state(True)['LoadState'] != 'not-found':
             run(['/usr/bin/systemctl', '--user', 'stop', self.bridge_unit])
@@ -113,7 +119,13 @@ class Runtime:
         if current['locked']:
             raise RuntimeError('Unlock the desktop before starting.')
         scope = self.session_scope()
-        engine = self.engine_command(apple, scope, generated=preferences is not None)
+        persistent = self.state().get('Transient') == 'no' and self.state()['LoadState'] != 'not-found'
+        if persistent:
+            from control import Install
+            from startup import Startup
+            if not Startup(Install()).system_ready():
+                raise RuntimeError('System keyboard integration is incomplete. Open Doctor.')
+        engine = ['/usr/bin/systemctl', '--no-ask-password', 'start', self.unit] if persistent else self.engine_command(apple, scope, generated=preferences is not None)
         # Validate with the actual upstream parser, without touching any input devices.
         compiled = None
         if preferences is not None:

@@ -592,6 +592,7 @@ class XremapTests(unittest.TestCase):
     def test_rejected_start_cleans_user_bridge(self):
         runtime = Runtime(Path('/tmp/app'))
         with patch.object(runtime, 'ensure_absent'), \
+             patch.object(runtime, 'state', return_value={'LoadState':'not-found'}), \
              patch.object(runtime, 'context', return_value={'locked':False}), \
              patch.object(runtime, 'session_scope', return_value='session-2.scope'), \
              patch('runtime.run', return_value=''), patch('runtime.Path.exists', return_value=True), \

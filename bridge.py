@@ -71,7 +71,7 @@ def main():
             while not stopping:
                 now = time.monotonic()
                 if now >= next_check:
-                    active = runtime.state()['LoadState'] != 'not-found'
+                    active = runtime.state().get('ActiveState') in ('active', 'activating', 'deactivating')
                     observed_engine |= active
                     if not active and (observed_engine or now - started > 120):
                         break

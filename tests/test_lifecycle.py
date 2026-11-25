@@ -62,7 +62,7 @@ class LifecycleTests(unittest.TestCase):
             memory = MemoryDconf()
             with patch('preferences.Dconf', return_value=memory):
                 backend = Dashboard(install)
-                self.assertEqual(lifecycle(backend.status())['kind'], 'healthy')
+                self.assertEqual(lifecycle(backend.status())['title'], 'Running for this login only')
                 prefs = copy.deepcopy(DEFAULTS); prefs['layers']['navigation'] = False
                 save_preferences(install.record_dir, prefs)
                 self.assertTrue(backend.status()['pending_keyboard'])

@@ -32,7 +32,7 @@ ARCHIVES = {
     'x86_64': '61db029d4ee19b9431120ab740574b9b0d2740d9b5b98bbc3375601fdf2687d3',
     'aarch64': 'a0f1cf1428c8a60d95009519cffc2971bbcf695564ea1fcd5e95aa3719dd69b0',
 }
-APP_FILES = ('control.py', 'runtime.py', 'bridge.py', 'profiles.py', 'preferences.py', 'dashboard.py', 'gui.py', 'audit.py', 'shortcuts.py',
+APP_FILES = ('control.py', 'runtime.py', 'bridge.py', 'startup.py', 'system_setup.py', 'profiles.py', 'preferences.py', 'dashboard.py', 'gui.py', 'audit.py', 'shortcuts.py',
              'config.json', 'pc.json', 'apple.json', 'xremap', 'XREMAP-LICENSE')
 
 
@@ -104,9 +104,10 @@ class Desktop:
 
 
 class Install:
-    def __init__(self, data=None, state=None, desktop=None, source=None, engine=None, runtime=None):
+    def __init__(self, data=None, state=None, desktop=None, source=None, engine=None, runtime=None, config=None):
         self.data = Path(data or os.environ.get('XDG_DATA_HOME') or Path.home() / '.local/share').absolute()
         self.state = Path(state or os.environ.get('XDG_STATE_HOME') or Path.home() / '.local/state').absolute()
+        self.config = Path(config or (Path(state)/'config' if state else os.environ.get('XDG_CONFIG_HOME') or Path.home()/'.config')).absolute()
         self.app = self.data / 'gnome-maclike'
         self.ext = self.data / 'gnome-shell/extensions' / UUID
         self.launcher = self.data / 'applications/gnome-maclike.desktop'
@@ -166,9 +167,9 @@ class Install:
                               'Comment=Familiar shortcuts, wallpapers and dock, with restore controls\n'
                               f'Exec=/usr/bin/python3 -B "{gui}"\n'
                               'Icon=preferences-desktop-keyboard-shortcuts\nStartupWMClass=dev.mplb.GnomeMacLike\n'
-                              'Terminal=false\nCategories=Settings;Utility;\nActions=Stop;Uninstall;\n\n'
-                              '[Desktop Action Stop]\nName=Stop shortcuts\n'
-                              f'Exec=/usr/bin/python3 -B "{executable}" stop --notify\n\n'
+                              'Terminal=false\nCategories=Settings;Utility;\nActions=Disable;Uninstall;\n\n'
+                              '[Desktop Action Disable]\nName=Disable shortcuts\n'
+                              f'Exec=/usr/bin/python3 -B "{executable}" disable --notify\n\n'
                               '[Desktop Action Uninstall]\nName=Uninstall GNOME MacLike\n'
                               f'Exec=/usr/bin/python3 -B "{executable}" uninstall --notify\n').encode()
 
@@ -416,6 +417,8 @@ class Install:
             if root.is_symlink():
                 raise RuntimeError(f'Replaced installation directory: {root}')
         with self.operation():
+            from startup import Startup
+            Startup(self).uninstall()
             self.stop()
             # Hold the same lock the remapper needs before it can grab devices.
             lock = (self.app / 'run.lock').open('a') if self.app.is_dir() else None
@@ -533,6 +536,39 @@ class Install:
                 raise
         print('Xremap is running in the background. Physical Ctrl+Alt+Esc stops it.')
 
+    def enable(self):
+        from startup import Startup
+        startup = Startup(self)
+        with self.operation():
+            self.stop()
+            self.desktop_change('enable extension', {'extension': 'enabled'}, self.desktop.enable)
+            startup.enable()
+        startup.start_session()
+
+    def disable(self):
+        from startup import Startup
+        with self.operation():
+            Startup(self).disable()
+            self.stop()
+
+    def login(self):
+        from startup import Startup
+        if not Startup(self).load()['enabled']:
+            return
+        # GNOME enables extensions asynchronously during login. Bounded readiness
+        # wait, off the GUI thread; no authentication or endless restart loop.
+        for _ in range(60):
+            try:
+                if not self.runtime.context()['locked']:
+                    break
+            except (RuntimeError, subprocess.SubprocessError):
+                pass
+            time.sleep(0.5)
+        else:
+            raise RuntimeError('GNOME adapter did not become ready. Open Doctor.')
+        if Startup(self).load()['enabled']:
+            self.start()
+
 
 def preflight():
     try:
@@ -559,8 +595,8 @@ def preflight():
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Optional, session-only Mac-style keyboard shortcuts on Ubuntu.')
-    parser.add_argument('action', choices=('install', 'start', 'stop', 'uninstall', 'status', 'refresh-launcher'))
+    parser = argparse.ArgumentParser(description='Enable, disable, diagnose and uninstall Mac-style keyboard shortcuts.')
+    parser.add_argument('action', choices=('install', 'enable', 'disable', 'doctor', 'login', 'start', 'stop', 'uninstall', 'status', 'refresh-launcher'))
     parser.add_argument('--notify', action='store_true', help='Show desktop feedback when launched without a terminal.')
     parser.add_argument('--archive', type=Path, help='Use a locally downloaded, checksum-verified Xremap release zip.')
     parser.add_argument('--apple', action='store_true', help='Use the physical Command key on an Apple keyboard.')
@@ -570,11 +606,21 @@ def main():
         parser.error('--audit-export is only for uninstall')
     if os.geteuid() == 0:
         raise RuntimeError('Run control.py as your normal user. Start/stop request administrator authorization for the transient service.')
-    if args.action in ('install', 'start'):
+    if args.action in ('install', 'start', 'enable'):
         preflight()
     install = Install(engine=engine_payload(args.archive) if args.action == 'install' else None)
     if args.action == 'install':
         install.install()
+    elif args.action == 'enable':
+        install.enable()
+    elif args.action == 'disable':
+        install.disable()
+    elif args.action == 'login':
+        install.login()
+    elif args.action == 'doctor':
+        from dashboard import Dashboard, lifecycle
+        state = Dashboard(install).status()
+        print(json.dumps({'diagnosis': lifecycle(state), 'state': state}, indent=2))
     elif args.action == 'start':
         install.start(args.apple)
     elif args.action == 'stop':

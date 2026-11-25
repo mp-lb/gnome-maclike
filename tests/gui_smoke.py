@@ -8,10 +8,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from gui import Application, Adw, Gio, GLib, Gtk
 from dashboard import Dashboard
 
+class ReadOnlyDashboard(Dashboard):
+    def save_folder(self, folder):
+        return None
+
 class Preview(Application):
     def __init__(self, output):
         Adw.Application.__init__(self, application_id='dev.mplb.GnomeMacLike.Preview', flags=Gio.ApplicationFlags.NON_UNIQUE)
-        self.backend = Dashboard()
+        self.backend = ReadOnlyDashboard()
         self.smoke = output
         self.complete = False
 
@@ -23,7 +27,7 @@ class Preview(Application):
         assert not window.apply_button.get_sensitive()
         window.banner.emit('button-clicked')
         def ready():
-            if window.refreshing or window.gallery_loading:
+            if window.refreshing or window.gallery_loading or window.busy:
                 return True
             self.capture(window, 0)
             return False
@@ -32,7 +36,7 @@ class Preview(Application):
     def capture(self, window, index):
         """Render actual GTK pages for local visual checks; no desktop screenshots."""
         import ctypes
-        pages = ['keyboard', 'shortcuts', 'shortcuts-search', 'wallpapers', 'dock', 'restore']
+        pages = ['keyboard', 'shortcuts', 'shortcuts-search', 'wallpapers', 'dock', 'doctor']
         if index >= len(pages):
             # Exercise dependency controls without writing settings.
             window.switches['command'].set_active(False)
