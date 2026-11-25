@@ -281,7 +281,10 @@ Enable provisions a fixed system service and a per-user graphical-login hook:
 
 - System `gnome-maclike-<uid>.service`: root-owned pinned Xremap binary and fixed
   command. It checks that this user has an active local Wayland session and owns
-  the runtime socket/config before starting. It is sandboxed with a read-only
+  the runtime socket/config before starting. It opens the user configuration
+  without following symlinks, validates a bounded JSON document and writes a
+  private root-owned snapshot. The privileged engine never parses a mutable user
+  path. It is sandboxed with a read-only
   filesystem, hidden home directories, Unix sockets and input/uinput device access.
   It is not enabled at boot; it starts through the user's graphical login only.
   It is bound to the user manager and stopped by the login service at logout.
@@ -340,7 +343,8 @@ The persistent footprint is:
 
 While running, systemd additionally owns the transient bridge definition and
 `/run/user/<uid>/gnome-maclike/desktop.sock`, generated `active.json` and a copy of
-the active preferences. Service stop/collection removes
+the active preferences, plus `/run/gnome-maclike-<uid>/active.json` (the private
+root-owned engine snapshot). Service stop/collection removes
 these. The kernel releases keyboard grabs and destroys the virtual device when
 Xremap exits. Uninstall checks service identity and waits for remapping and the runtime directory to stop/disappear **before removing installed files**. A denied
 stop, unresponsive service, or cleanup failure leaves the installation and

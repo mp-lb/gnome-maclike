@@ -39,8 +39,10 @@ ConditionPathExists={runtime}/desktop.sock
 
 [Service]
 Type=exec
+RuntimeDirectory=gnome-maclike-{uid}
+RuntimeDirectoryMode=0700
 ExecCondition=/usr/bin/python3 -I -B {base}/check_session.py
-ExecStart={base}/xremap --desktop=socket --no-window-logging --allow-launch=true --watch=device "--output-device-name=GNOME MacLike (Xremap)" {runtime}/active.json
+ExecStart={base}/xremap --desktop=socket --no-window-logging --allow-launch=true --watch=device "--output-device-name=GNOME MacLike (Xremap)" /run/gnome-maclike-{uid}/active.json
 Environment=XREMAP_SOCKET=/run/user/{{uid}}/gnome-maclike/desktop.sock RUST_LOG=error
 NoNewPrivileges=yes
 CapabilityBoundingSet=CAP_DAC_OVERRIDE
@@ -71,7 +73,7 @@ polkit.addRule(function(action, subject) {
 '''.replace('USER', json.dumps(username)).replace('UNIT', json.dumps(f'gnome-maclike-{uid}.service'))
     # User-manager processes may have no polkit login session. The fixed root
     # service checks logind itself before allowing an engine to grab devices.
-    check = f'''import os, stat, subprocess, sys
+    check = f'''import json, os, stat, subprocess, sys
 def read(*args):
     return subprocess.check_output(['/usr/bin/loginctl', *args], text=True, timeout=5).strip()
 try:
@@ -79,8 +81,24 @@ try:
     values = dict(line.split('=', 1) for line in read('show-session', session, '-p', 'User', '-p', 'Type', '-p', 'Active', '-p', 'Remote').splitlines())
     good = values == {{'User':'{uid}', 'Type':'wayland', 'Active':'yes', 'Remote':'no'}}
     sock = os.lstat('{runtime}/desktop.sock')
-    config = os.lstat('{runtime}/active.json')
-    good = good and stat.S_ISSOCK(sock.st_mode) and sock.st_uid == {uid} and stat.S_ISREG(config.st_mode) and config.st_uid == {uid}
+    good = good and stat.S_ISSOCK(sock.st_mode) and sock.st_uid == {uid}
+    if good:
+        fd = os.open('{runtime}/active.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, 'rb') as source:
+            info = os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != {uid}:
+                raise ValueError('Not a user-owned configuration')
+            data = source.read(4 * 1024 * 1024 + 1)
+        if len(data) > 4 * 1024 * 1024:
+            raise ValueError('Configuration too large')
+        config = json.loads(data)
+        if not isinstance(config, dict) or not set(config) <= {{'modmap', 'keymap'}} or not isinstance(config.get('keymap'), list):
+            raise ValueError('Unexpected configuration')
+        # Xremap reads only this root-owned snapshot. A replaced user path cannot
+        # trick the privileged parser into opening another file after this check.
+        fd = os.open('/run/gnome-maclike-{uid}/active.json', os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, 'w') as target:
+            json.dump(config, target); target.flush(); os.fsync(target.fileno())
 except Exception:
     good = False
 sys.exit(0 if good else 1)
@@ -95,6 +113,7 @@ class SystemSetup:
         self.uid = uid
         self.paths = paths(uid, Path(root))
         self.base = self.paths['engine'].parent
+        self.runtime = Path(root)/f'run/gnome-maclike-{uid}'
         self.record = self.base/'manifest.json'
         self.log = self.base/'audit.jsonl'
         self.runner = runner or (lambda args: subprocess.run(args, check=True, timeout=20))
@@ -148,6 +167,8 @@ class SystemSetup:
             if self.load() != info:
                 raise RuntimeError('Different system installation preserved; uninstall it before replacing.')
         else:
+            if os.path.lexists(self.runtime):
+                raise RuntimeError('Existing system runtime directory preserved.')
             for path in self.paths.values():
                 self.safe_parents(path.parent if path.parent == self.base else path)
                 if os.path.lexists(path):
@@ -187,6 +208,8 @@ class SystemSetup:
         except subprocess.CalledProcessError as exc:
             if exc.returncode != 5:  # An interrupted install may never load a unit.
                 raise
+        if os.path.lexists(self.runtime):
+            raise RuntimeError('System runtime directory remains; installation preserved for recovery.')
         for name in ('policy', 'unit', 'session_check', 'engine'):
             path = self.paths[name]
             self.event('remove intent', path=str(path), before=info['files'][name], requested=None)

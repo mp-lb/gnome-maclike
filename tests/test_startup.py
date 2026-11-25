@@ -223,6 +223,37 @@ class SystemSetupTests(unittest.TestCase):
         self.assertIn('ProtectHome=tmpfs\n', unit)
         self.assertIn('BindReadOnlyPaths=/run/user/1000/gnome-maclike\n', unit)
         self.assertNotIn('/home/', unit)
+        self.assertIn('/run/gnome-maclike-1000/active.json', unit)
+
+    def test_privileged_snapshot_rejects_symlinks_and_keeps_a_separate_copy(self):
+        import socket
+        # Execute the exact generated condition in an isolated filesystem, with
+        # logind alone mocked. No device access or actual service is involved.
+        uid = os.getuid()
+        runtime = self.root/'user-runtime'; runtime.mkdir()
+        protected = self.root/'root-runtime'; protected.mkdir()
+        source = runtime/'active.json'
+        config = {'keymap': []}
+        source.write_text(json.dumps(config))
+        script = payloads(uid, 'test-user', b'engine')['session_check'].decode()
+        script = script.replace(f'/run/user/{uid}/gnome-maclike', str(runtime)).replace(f'/run/gnome-maclike-{uid}', str(protected))
+        with socket.socket(socket.AF_UNIX) as sock:
+            sock.bind(str(runtime/'desktop.sock'))
+            def execute():
+                with patch('subprocess.check_output', side_effect=['2', f'User={uid}\nType=wayland\nActive=yes\nRemote=no']):
+                    with self.assertRaises(SystemExit) as result:
+                        exec(script, {})
+                    return result.exception.code
+            self.assertEqual(execute(), 0)
+            source.write_text('{"keymap":[{"name":"changed"}]}')
+            self.assertEqual(json.loads((protected/'active.json').read_text()), config)
+            source.unlink()
+            private = self.root/'private'; private.write_text('private data')
+            source.symlink_to(private)
+            self.assertEqual(execute(), 1)
+            self.assertEqual(json.loads((protected/'active.json').read_text()), config)
+            source.unlink(); source.write_text('{"include":"/etc/shadow"}')
+            self.assertEqual(execute(), 1)
 
     def test_interrupted_system_publications_recover_and_remove(self):
         link = os.link
@@ -250,6 +281,15 @@ class SystemSetupTests(unittest.TestCase):
         self.setup.paths['unit'].write_text('external changes')
         before = snapshot(self.root)
         with self.assertRaisesRegex(RuntimeError, 'preserved'):
+            self.setup.uninstall()
+        self.assertEqual(snapshot(self.root), before)
+
+    def test_system_runtime_must_be_gone_before_uninstall_removes_files(self):
+        self.setup.install(b'engine', 'test-user')
+        self.setup.runtime.mkdir(parents=True)
+        (self.setup.runtime/'unknown').write_text('preserve')
+        before = snapshot(self.root)
+        with self.assertRaisesRegex(RuntimeError, 'runtime directory remains'):
             self.setup.uninstall()
         self.assertEqual(snapshot(self.root), before)
 
