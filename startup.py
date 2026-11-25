@@ -131,7 +131,7 @@ StartLimitIntervalSec=0
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=:/usr/bin/python3 -B {controller} login
-ExecStop=/usr/bin/systemctl --no-ask-password stop gnome-maclike-{self.uid}.service
+ExecStop=:/usr/bin/python3 -B {controller} session-stop
 TimeoutStartSec=90
 TimeoutStopSec=15
 '''
@@ -141,7 +141,6 @@ Name=GNOME MacLike keyboard
 Exec=/usr/bin/systemctl --user start {UNIT}
 OnlyShowIn=GNOME;
 NoDisplay=true
-X-GNOME-Autostart-Phase=Applications
 '''
         return {'login': desktop.encode(), 'session': unit.encode()}
 

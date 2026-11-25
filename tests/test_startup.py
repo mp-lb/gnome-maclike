@@ -59,6 +59,19 @@ class StartupTests(unittest.TestCase):
         self.startup.enable()
         self.assertTrue(self.startup.load()['enabled'])
 
+    def test_real_gnome_autostart_generator_accepts_the_login_entry(self):
+        generator = Path('/usr/lib/systemd/user-generators/systemd-xdg-autostart-generator')
+        if not generator.exists():
+            self.skipTest('GNOME/systemd autostart generator is not installed.')
+        self.startup.enable()
+        outputs = [self.root/name for name in ('normal', 'early', 'late')]
+        for path in outputs:
+            path.mkdir()
+        env = dict(os.environ, XDG_CONFIG_HOME=str(self.startup.config), XDG_CONFIG_DIRS=str(self.root/'empty-configs'))
+        subprocess.run([str(generator), *map(str, outputs)], env=env, check=True, capture_output=True)
+        units = [p.read_text() for path in outputs for p in path.glob('*.service')]
+        self.assertTrue(any('gnome-maclike-session.service' in text for text in units), units)
+
     def test_each_interrupted_user_publication_can_be_retried_or_uninstalled(self):
         from control import publish
         for target in self.startup.paths.values():

@@ -43,8 +43,8 @@ def lifecycle(state=None, error=None, dirty=False, operation_error=None):
     if not state.get('running'):
         return result('attention', 'Enabled, but not running', 'Your enabled preference is saved, but the keyboard service stopped or failed to start. Enable retries it. Disable keeps it off.', 'apply', 'Enable')
     if not state['preferences']['layers']['command']:
-        return result('off', 'Enabled, layers off', 'Automatic startup is enabled, but the Command layer is off. Enable that layer to use the shortcuts, or Disable automatic startup.', banner=False)
-    return result('healthy', 'Enabled', 'Keyboard changes are running and will start automatically at login. You can close this window. Saved choices, installed files and tracked settings passed Doctor.', banner=False)
+        return result('healthy', 'Enabled', 'MacLike is enabled with the Command layer off. Your desktop choices remain applied; enable that layer to use its shortcuts.', banner=False)
+    return result('healthy', 'Enabled', 'MacLike is on. Keyboard shortcuts start automatically at login; your dock and wallpaper choices stay applied. You can close this window. Saved choices and tracked settings passed Doctor.', banner=False)
 
 
 class Dashboard:

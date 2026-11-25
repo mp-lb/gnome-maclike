@@ -168,7 +168,7 @@ class Install:
                               f'Exec=/usr/bin/python3 -B "{gui}"\n'
                               'Icon=preferences-desktop-keyboard-shortcuts\nStartupWMClass=dev.mplb.GnomeMacLike\n'
                               'Terminal=false\nCategories=Settings;Utility;\nActions=Disable;Uninstall;\n\n'
-                              '[Desktop Action Disable]\nName=Disable shortcuts\n'
+                              '[Desktop Action Disable]\nName=Disable MacLike\n'
                               f'Exec=/usr/bin/python3 -B "{executable}" disable --notify\n\n'
                               '[Desktop Action Uninstall]\nName=Uninstall GNOME MacLike\n'
                               f'Exec=/usr/bin/python3 -B "{executable}" uninstall --notify\n').encode()
@@ -601,7 +601,7 @@ def preflight():
 
 def main():
     parser = argparse.ArgumentParser(description='Enable, disable, diagnose and uninstall Mac-style keyboard shortcuts.')
-    parser.add_argument('action', choices=('install', 'enable', 'disable', 'doctor', 'login', 'start', 'stop', 'uninstall', 'status', 'refresh-launcher'))
+    parser.add_argument('action', choices=('install', 'enable', 'disable', 'doctor', 'login', 'session-stop', 'start', 'stop', 'uninstall', 'status', 'refresh-launcher'))
     parser.add_argument('--notify', action='store_true', help='Show desktop feedback when launched without a terminal.')
     parser.add_argument('--archive', type=Path, help='Use a locally downloaded, checksum-verified Xremap release zip.')
     parser.add_argument('--apple', action='store_true', help='Use the physical Command key on an Apple keyboard.')
@@ -622,6 +622,9 @@ def main():
         install.disable()
     elif args.action == 'login':
         install.login()
+    elif args.action == 'session-stop':
+        install.audit.change('stop login services', 'keyboard services', install.session_state,
+                             {'services': 'inactive', 'runtime_directory': 'absent'}, install.runtime.stop)
     elif args.action == 'doctor':
         from dashboard import Dashboard, lifecycle
         state = Dashboard(install).status()

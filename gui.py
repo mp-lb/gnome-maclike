@@ -144,8 +144,8 @@ class Window(Adw.ApplicationWindow):
 
     def keyboard_page(self):
         page = self.page('Keyboard', 'input-keyboard-symbolic',
-                         'Enable once. Your keyboard choices stay on across logins until you Disable.')
-        group = self.group(page, 'Keyboard preference')
+                         'Enable your saved keyboard, dock and wallpaper choices. Disable restores your previous setup.')
+        group = self.group(page, 'MacLike')
         self.status_row = Adw.ActionRow(title='Not checked', subtitle='Doctor checks whether your enabled preference is working.')
         self.apply_button = button('Enable', self.apply_keyboard, 'suggested-action')
         self.stop_button = button('Disable', lambda: self.work(self.backend.stop))
