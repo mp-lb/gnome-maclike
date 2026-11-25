@@ -32,7 +32,7 @@ ARCHIVES = {
     'x86_64': '61db029d4ee19b9431120ab740574b9b0d2740d9b5b98bbc3375601fdf2687d3',
     'aarch64': 'a0f1cf1428c8a60d95009519cffc2971bbcf695564ea1fcd5e95aa3719dd69b0',
 }
-APP_FILES = ('control.py', 'runtime.py', 'bridge.py', 'profiles.py', 'preferences.py', 'dashboard.py', 'gui.py', 'audit.py',
+APP_FILES = ('control.py', 'runtime.py', 'bridge.py', 'profiles.py', 'preferences.py', 'dashboard.py', 'gui.py', 'audit.py', 'shortcuts.py',
              'config.json', 'pc.json', 'apple.json', 'xremap', 'XREMAP-LICENSE')
 
 

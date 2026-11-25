@@ -13,7 +13,7 @@ sys.dont_write_bytecode = True
 from control import Install, APP_FILES
 from preferences import write_json
 
-DASHBOARD_FILES = {'gui.py', 'dashboard.py', 'preferences.py', 'control.py', 'audit.py'}
+DASHBOARD_FILES = {'gui.py', 'dashboard.py', 'preferences.py', 'control.py', 'audit.py', 'shortcuts.py'}
 
 
 def refresh(install=None, dashboard=False):
@@ -135,8 +135,8 @@ def refresh_dashboard(install):
             current = hashlib.sha256(target.read_bytes()).hexdigest() if target.exists() else None
             if current not in (entry['before'], entry['after']) or info['files'].get('app/' + name) not in (entry['before'], entry['after']):
                 raise RuntimeError(f'Dashboard file changed outside this update: {target}')
-        # Publish the controller last so its new imports are already available.
-        for name in sorted(plan, key=lambda n: (n == 'control.py', n)):
+        # Publish entrypoints after their dependencies, then the controller last.
+        for name in sorted(plan, key=lambda n: (2 if n == 'control.py' else 1 if n == 'gui.py' else 0, n)):
             entry = plan[name]
             target = install.app / name
             def publish_module():

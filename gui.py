@@ -17,6 +17,7 @@ from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk
 
 from dashboard import Dashboard
 from profiles import DEFAULTS, LAYERS
+from shortcuts import CATALOG, CATEGORIES, SOURCES, STATUSES, matching
 
 CHROME = ('google-chrome', 'Google-chrome', 'chromium', 'Chromium',
           'chromium-browser', 'chromium_chromium', 'org.chromium.Chromium')
@@ -77,6 +78,7 @@ class Window(Adw.ApplicationWindow):
         root.append(self.stack)
         self.stack.set_vexpand(True)
         self.keyboard_page()
+        self.shortcuts_page()
         self.wallpaper_page()
         self.dock_page()
         self.restore_page()
@@ -181,6 +183,67 @@ class Window(Adw.ApplicationWindow):
     def apply_keyboard(self):
         prefs = self.selected()
         self.work(lambda: self.backend.apply_keyboard(prefs))
+
+    def shortcuts_page(self):
+        page = self.page('Shortcuts', 'input-keyboard-symbolic',
+                         'Every explicit MacLike mapping, common app shortcuts, and the additions we have considered.')
+        page.append(label('Command is left Alt on a PC keyboard, or left Super on an Apple keyboard. '
+                          'Option is left Super on a PC keyboard. Backspace means the Mac key labelled Delete.', 'dim-label'))
+        toolbar = Gtk.Box(spacing=12)
+        self.shortcut_search = Gtk.SearchEntry(placeholder_text='Search an action or keys, e.g. copy or command left', hexpand=True)
+        self.shortcut_filter_keys = ['all', *STATUSES]
+        self.shortcut_filter = Gtk.DropDown(model=Gtk.StringList.new(['All decisions', *STATUSES.values()]))
+        self.shortcut_filter.set_tooltip_text('Filter by implementation status')
+        self.shortcut_filter.update_property([Gtk.AccessibleProperty.LABEL], ['Shortcut implementation status'])
+        toolbar.append(self.shortcut_search)
+        toolbar.append(self.shortcut_filter)
+        page.append(toolbar)
+        self.shortcut_count = label('', 'dim-label')
+        page.append(self.shortcut_count)
+        page.append(label('Mapped entries need a running session, enabled layers and no app exclusion. '
+                          'Plans are not active mappings; those keys may still reach apps through the base swap.', 'dim-label'))
+        self.shortcut_rows = {}
+        self.shortcut_groups = {}
+        for category in CATEGORIES:
+            group = self.group(page, category)
+            self.shortcut_groups[category] = group
+            for item in (row for row in CATALOG if row.category == category):
+                row = Adw.ExpanderRow(title=item.action, subtitle=item.keys)
+                row.set_use_markup(False)
+                badge = Gtk.Label(label=STATUSES[item.status], valign=Gtk.Align.CENTER)
+                badge.add_css_class('dim-label')
+                row.add_suffix(badge)
+                details = Adw.ActionRow(title='Behavior and scope', subtitle=item.detail)
+                details.set_use_markup(False)
+                details.set_subtitle_lines(0)
+                row.add_row(details)
+                layer = LAYERS[item.layer][0] if item.layer in LAYERS else ('Always available while remapping' if item.layer == 'always' else 'No mapping layer yet')
+                decision = Adw.ActionRow(title=layer, subtitle=f'{item.priority} · Reference ID: {item.id}')
+                decision.set_use_markup(False)
+                title, url = SOURCES[item.source]
+                source = Gtk.LinkButton(uri=url, label='Reference', valign=Gtk.Align.CENTER)
+                source.set_tooltip_text(title)
+                decision.add_suffix(source)
+                row.add_row(decision)
+                group.add(row)
+                self.shortcut_rows[item.id] = row
+        self.shortcut_empty = label('No matching shortcuts. Try another search or choose All decisions.', 'dim-label')
+        page.append(self.shortcut_empty)
+        self.shortcut_search.connect('search-changed', lambda *_: self.filter_shortcuts())
+        self.shortcut_filter.connect('notify::selected', lambda *_: self.filter_shortcuts())
+        self.filter_shortcuts()
+
+    def filter_shortcuts(self):
+        status = self.shortcut_filter_keys[self.shortcut_filter.get_selected()]
+        found = matching(self.shortcut_search.get_text(), status)
+        ids = {row.id for row in found}
+        categories = {row.category for row in found}
+        for id, row in self.shortcut_rows.items():
+            row.set_visible(id in ids)
+        for category, group in self.shortcut_groups.items():
+            group.set_visible(category in categories)
+        self.shortcut_count.set_text(f'{len(found)} of {len(CATALOG)} entries · Implementation status, not live activation')
+        self.shortcut_empty.set_visible(not found)
 
     def wallpaper_page(self):
         page = self.page('Wallpapers', 'preferences-desktop-wallpaper-symbolic',

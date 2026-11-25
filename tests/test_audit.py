@@ -106,7 +106,7 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(snapshot(self.root), before)
 
     def test_dashboard_update_preserves_choices_and_recovers_each_publication_failure(self):
-        for failed_name in ('audit.py', 'dashboard.py', 'gui.py', 'preferences.py', 'control.py'):
+        for failed_name in ('audit.py', 'shortcuts.py', 'dashboard.py', 'gui.py', 'preferences.py', 'control.py'):
             with self.subTest(file=failed_name):
                 install = self.make_install()
                 prefs = copy.deepcopy(DEFAULTS)
@@ -115,9 +115,9 @@ class AuditTests(unittest.TestCase):
                 before = (install.record_dir/'preferences.json').read_bytes()
                 info = install.load()
                 import hashlib
-                for name in ('audit.py', 'dashboard.py', 'gui.py', 'preferences.py', 'control.py'):
+                for name in ('audit.py', 'shortcuts.py', 'dashboard.py', 'gui.py', 'preferences.py', 'control.py'):
                     path = install.app / name
-                    if name == 'audit.py':
+                    if name in ('audit.py', 'shortcuts.py'):
                         path.unlink()
                         del info['files']['app/' + name]
                     else:
@@ -134,7 +134,7 @@ class AuditTests(unittest.TestCase):
                         refresh_dashboard(install)
                 refresh_dashboard(install)
                 self.assertEqual((install.record_dir/'preferences.json').read_bytes(), before)
-                for name in ('audit.py', 'dashboard.py', 'gui.py', 'preferences.py', 'control.py'):
+                for name in ('audit.py', 'shortcuts.py', 'dashboard.py', 'gui.py', 'preferences.py', 'control.py'):
                     self.assertEqual((install.app/name).read_bytes(), (SOURCE/name).read_bytes())
                 install.uninstall()
                 self.assertEqual(snapshot(self.root), {})

@@ -32,7 +32,7 @@ class Preview(Application):
     def capture(self, window, index):
         """Render actual GTK pages for local visual checks; no desktop screenshots."""
         import ctypes
-        pages = ['keyboard', 'wallpapers', 'dock', 'restore']
+        pages = ['keyboard', 'shortcuts', 'shortcuts-search', 'wallpapers', 'dock', 'restore']
         if index >= len(pages):
             # Exercise dependency controls without writing settings.
             window.switches['command'].set_active(False)
@@ -40,11 +40,23 @@ class Preview(Application):
             window.switches['command'].set_active(True)
             window.chrome.set_active(True)
             assert 'chromium' in window.selected()['excluded_apps']
+            window.shortcut_search.set_text('no-such-action-xyz')
+            window.filter_shortcuts()
+            assert window.shortcut_empty.get_visible()
+            assert not any(row.get_visible() for row in window.shortcut_rows.values())
             self.complete = True
             print('GUI smoke check passed.', flush=True)
             self.quit()
             return False
-        window.stack.set_visible_child_name(pages[index])
+        page = pages[index]
+        if page == 'shortcuts-search':
+            window.shortcut_search.set_text('backtick')
+            window.shortcut_filter.set_selected(window.shortcut_filter_keys.index('planned'))
+            window.filter_shortcuts()
+            assert {id for id, row in window.shortcut_rows.items() if row.get_visible()} == {'cycle-window', 'cycle-window-back'}
+            window.shortcut_rows['cycle-window'].set_expanded(True)
+            page = 'shortcuts'
+        window.stack.set_visible_child_name(page)
         window.present()
         window.queue_draw()
         def snapshot():

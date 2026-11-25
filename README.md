@@ -11,6 +11,9 @@ and normal application quit. There is no custom keyboard driver or mapping engin
 
 Read [Mental model](MENTAL_MODEL.md) for shortcut precedence, deliberate conflicts,
 compatibility priorities and the boundaries of the current mapping layers.
+The [shortcut selection guide](SHORTCUTS.md) explains the research and priorities
+behind the searchable **Shortcuts** catalog in the app. The catalog distinguishes
+current mappings, app-dependent behavior, approximations and unimplemented plans.
 
 ## Install and use
 
@@ -232,12 +235,14 @@ logging is disabled and the adapter supplies no titles.
 The persistent footprint is:
 
 - `${XDG_DATA_HOME:-~/.local/share}/gnome-maclike/`: controller, runtime manager,
-  desktop adapter, three JSON configs, Xremap binary/license and empty session lock.
+  desktop adapter, dashboard and shortcut catalog, profiles/preferences/audit modules,
+  three JSON configs, Xremap binary/license and empty session lock.
 - `${XDG_DATA_HOME}/gnome-shell/extensions/gnome-maclike@mp-lb.dev/`: JS and metadata.
 - `${XDG_DATA_HOME}/applications/gnome-maclike.desktop`.
 - `${XDG_STATE_HOME:-~/.local/state}/gnome-maclike/`: recovery manifest and
   operation lock, mutable `preferences.json` for layer/gallery choices, and
-  `appearance.json` for original/applied allowlisted desktop settings. Atomic
+  `appearance.json` for original/applied allowlisted desktop settings, and
+  `audit.jsonl` for configuration history. Atomic
   writes may leave recoverable staging files during an interruption.
 - Only our UUID membership in GNOME's enabled/disabled extension lists.
 

@@ -8,6 +8,8 @@ usable and reversible.
 
 This document distinguishes our compatibility policy from what the current code
 actually does. It does not certify every application or keyboard layout.
+See [Shortcut selection and coverage](SHORTCUTS.md) for the research, priorities
+and status definitions used by the app's searchable shortcut inventory.
 
 ## Precedence is real, but there are more than two levels
 
