@@ -76,7 +76,7 @@ Our optional layers add a few exceptions:
 | Control+Command+Q | Request screen lock through the bridge | GNOME's screen-lock service |
 | Command/Option arrows | Home/End or Control-arrow combinations | Focused app/control |
 
-Command+Backspace uses native Control+Shift+Backspace in Chrome/Chromium only.
+Command+Backspace uses native Control+Shift+Backspace in Chrome/Chromium and Codex (Chatgpt app).
 Other apps retain their existing behavior. GTK's similarly named action can
 delete an entire first paragraph when already at document start; its single-line
 fields do not share the binding. This bounded browser rule avoids both that

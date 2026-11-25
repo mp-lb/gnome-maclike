@@ -19,7 +19,7 @@ class Backend:
         time.sleep(.4)
         prefs = copy.deepcopy(DEFAULTS)
         prefs['wallpaper_folder'] = str(folder)
-        return dict(installed=True, update=False, running=False, bridge=False,
+        return dict(installed=True, update=False, running=True, bridge=True,
                     preferences=prefs, appearance={})
 
 
@@ -47,10 +47,26 @@ class Check(Application):
             if self.phase == 0 and now - self.started > .3:
                 assert self.backend.calls == 0, 'Startup triggered a check'
                 assert not window.apply_button.get_sensitive()
+                assert window.health_label.get_text() == 'Not checked'
+                assert all(c.get_sensitive() for c in window.recovery_controls)
                 window.check_button.emit('clicked')
                 assert window.refreshing
                 self.phase = 1
             elif self.phase == 1 and window.loaded and not window.gallery_loading:
+                assert window.health_label.get_text() == 'Active'
+                assert not window.banner.get_revealed()
+                window.switches['navigation'].set_active(False)
+                assert window.health_label.get_text() == 'Changes not applied'
+                assert window.banner.get_revealed()
+                window.switches['navigation'].set_active(True)
+                assert not window.banner.get_revealed()
+                window.check_error = 'Simulated failed check'
+                window.render_status(); window.sensitivity()
+                assert window.health_label.get_text() == 'Status unavailable'
+                assert all(c.get_sensitive() for c in window.recovery_controls)
+                assert not window.apply_button.get_sensitive()
+                window.check_error = None
+                window.render_status(); window.sensitivity()
                 assert '1 images shown' in window.gallery_label.get_text()
                 window.fivek.set_active(False)
                 self.phase = 2

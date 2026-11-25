@@ -128,7 +128,7 @@ def build_catalog():
     planned('launcher','Cmd+Space','Search / launcher','Desktop and capture','Prefer GNOME’s existing overview/search. Do not install a separate launcher or take over input-method shortcuts blindly.')
     planned('delete-word','Option+Backspace','Delete previous word','Text navigation','Translate to a conventional Linux word deletion; check terminals and destructive side effects.',source='text')
     add('delete-line','Cmd+Backspace','Delete to line start','Text navigation','mapped',
-        'Chrome/Chromium only: sends Ctrl+Shift+Backspace for native deletion to line start in text fields. Other apps and standalone terminals keep their existing behavior. A web app or browser-hosted terminal can intercept this shortcut. No selection macro or clipboard change.',
+        'Chrome/Chromium and Codex (Chatgpt app): sends Ctrl+Shift+Backspace for native deletion to line start in text fields. Other apps and standalone terminals keep their existing behavior. A web app or browser-hosted terminal can intercept this shortcut. No selection macro or clipboard change.',
         'navigation', 'text', [('Command delete to line start', 'BackSpace')])
     planned('paste-style','Cmd+Option+Shift+V','Paste without source formatting','Editing','Choose a bounded convention; some apps already accept Cmd+Shift+V via the base swap.',source='text')
     for id, keys, action in [('capture-screen','Cmd+Shift+3','Capture screen'), ('capture-area','Cmd+Shift+4','Capture area'),

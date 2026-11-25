@@ -4,6 +4,7 @@ import argparse
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 import copy
+from datetime import datetime
 from pathlib import Path
 import sys
 import subprocess
@@ -15,7 +16,7 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk
 
-from dashboard import Dashboard
+from dashboard import Dashboard, lifecycle
 from profiles import DEFAULTS, LAYERS
 from shortcuts import CATALOG, CATEGORIES, SOURCES, STATUSES, matching
 
@@ -45,6 +46,11 @@ class Window(Adw.ApplicationWindow):
         self.busy = False
         self.loaded = False
         self.state = {}
+        self.checked_at = None
+        self.check_error = None
+        self.operation_error = None
+        self.loading_preferences = False
+        self.recovery_controls = []
         self.switches = {}
         self.guarded = []
         self.preview_folder = None
@@ -62,13 +68,21 @@ class Window(Adw.ApplicationWindow):
         self.toast.set_child(root)
         header = Adw.HeaderBar()
         header.set_title_widget(Adw.WindowTitle(title='GNOME MacLike', subtitle='Your desktop, with a familiar feel'))
-        self.check_button = button('Check setup', self.refresh)
+        self.health_box = Gtk.Box(spacing=6)
+        self.health_icon = Gtk.Image(icon_name='dialog-question-symbolic')
+        self.health_label = Gtk.Label(label='Not checked')
+        self.health_box.append(self.health_icon)
+        self.health_box.append(self.health_label)
+        header.pack_start(self.health_box)
+        self.recovery_button = button('Restore', lambda: self.stack.set_visible_child_name('restore'))
+        header.pack_end(self.recovery_button)
+        self.check_button = button('Check status', self.refresh)
         header.pack_end(self.check_button)
         root.append(header)
-        self.banner = Adw.Banner(title='Check setup to load your saved choices and enable controls. No settings will change.')
+        self.banner = Adw.Banner()
         root.append(self.banner)
         self.banner.set_revealed(True)
-        self.banner.connect('button-clicked', lambda *_: self.install_clicked())
+        self.banner.connect('button-clicked', lambda *_: self.status_action())
         self.stack = Adw.ViewStack()
         switcher = Adw.ViewSwitcher(stack=self.stack, policy=Adw.ViewSwitcherPolicy.WIDE)
         switcher.set_halign(Gtk.Align.CENTER)
@@ -82,8 +96,12 @@ class Window(Adw.ApplicationWindow):
         self.wallpaper_page()
         self.dock_page()
         self.restore_page()
-        self.status_row.set_title('Keyboard status not checked')
-        self.status_row.set_subtitle('Click Check setup to read the current session and saved choices.')
+        for row in self.switches.values():
+            row.connect('notify::active', lambda *_: self.selection_changed())
+        self.hardware.connect('notify::selected', lambda *_: self.selection_changed())
+        self.chrome.connect('notify::active', lambda *_: self.selection_changed())
+        self.exclusions.connect('changed', lambda *_: self.selection_changed())
+        self.render_status()
         self.sensitivity()
 
     def close_requested(self, *_):
@@ -155,7 +173,7 @@ class Window(Adw.ApplicationWindow):
         self.exclusions = Adw.EntryRow(title='Application names, separated by commas')
         group.add(self.exclusions)
         self.chrome = Adw.SwitchRow(title='Use only the base swap in Chrome / Chromium',
-                                    subtitle='No browser-specific patches are installed.')
+                                    subtitle='Skips optional shortcuts, including delete to line start.')
         group.add(self.chrome)
         page.append(label('Text navigation: Command-←/→ goes to line edges; Command-↑/↓ to document edges; '
                           'Option-←/→ moves by words. Add Shift to select. These mappings also apply outside '
@@ -163,7 +181,9 @@ class Window(Adw.ApplicationWindow):
                           'their host app, not the standalone-terminal rule.', 'dim-label'))
 
     def layer_sensitivity(self):
-        active = self.switches['command'].get_active()
+        enabled = self.loaded and self.state.get('installed') and not self.state.get('update') and not self.state.get('problems') and not self.check_error and not self.busy and not self.refreshing
+        active = self.switches['command'].get_active() and enabled
+        self.switches['command'].set_sensitive(enabled)
         for key, row in self.switches.items():
             if key != 'command':
                 row.set_sensitive(active)
@@ -402,14 +422,14 @@ class Window(Adw.ApplicationWindow):
     def restore_page(self):
         page = self.page('Restore', 'edit-undo-symbolic', 'See what the app owns, and undo it without guessing.')
         group = self.group(page, 'Your exit routes')
-        self.action_row(group, 'Stop keyboard remapping', 'Immediately returns physical keys to their original behavior. No system keybindings were overwritten.',
-                        'Stop', lambda: self.work(self.backend.stop))
-        self.action_row(group, 'Restore desktop changes', 'Stops the keyboard session and restores the dock and wallpaper. Keeps the application installed.',
-                        'Restore all', lambda: self.confirm('Restore your desktop?', 'Stop keyboard remapping and restore managed appearance settings?', self.backend.restore))
-        self.action_row(group, 'Uninstall GNOME MacLike', 'Stops both services, restores managed settings and removes installed files and saved choices. Your wallpaper images stay untouched.',
-                        'Uninstall', self.uninstall_clicked, 'destructive-action')
+        self.recovery_controls.append(self.action_row(group, 'Stop keyboard changes', 'Stops remapping and restores our saved overview-key setting. Wallpaper and dock stay as they are.',
+                        'Stop keyboard', lambda: self.work(self.backend.stop), managed=False))
+        self.recovery_controls.append(self.action_row(group, 'Restore all changes', 'Stops remapping and restores our keyboard, dock and wallpaper settings. Keeps the application installed.',
+                        'Restore all', lambda: self.confirm('Restore your previous settings?', 'Stop keyboard remapping and restore the settings saved before MacLike changed them? Newer external edits will be preserved.', self.backend.restore), managed=False))
+        self.recovery_controls.append(self.action_row(group, 'Uninstall GNOME MacLike', 'Stops both services, restores managed settings and removes installed files and saved choices. Your wallpaper images stay untouched.',
+                        'Uninstall', self.uninstall_clicked, 'destructive-action', managed=False))
         page.append(label('Restoration means your values from before this app changed them—not factory defaults. '
-                          'If you change a managed appearance setting elsewhere, its newer value is preserved. '
+                          'If you change a managed setting elsewhere, its newer value is preserved. '
                           'Modified installation files and unknown files block removal instead of being deleted. '
                           'If authentication or cleanup fails, recovery records remain so you can retry.', 'dim-label'))
         group = self.group(page, 'Footprint and recovery record')
@@ -422,6 +442,13 @@ class Window(Adw.ApplicationWindow):
         page.append(label('No packages, device-permission rules, startup services or boot settings are installed. '
                           'The remapper runs only after you start it and ends at logout. Closing this window '
                           'does not stop an active keyboard session. Physical Ctrl+Alt+Esc is the emergency stop.', 'dim-label'))
+        group = self.group(page, 'If this window will not open',
+                           'Physical Ctrl+Alt+Esc stops the remapper. To restore settings and uninstall afterward, run this in a normal terminal. Ubuntu may request authentication.')
+        app_path = getattr(getattr(self.backend, 'install', None), 'app', Path.home()/'.local/share/gnome-maclike')
+        import shlex
+        command = label('python3 -B ' + shlex.quote(str(app_path/'control.py')) + ' uninstall', 'monospace')
+        command.set_selectable(True)
+        group.add(command)
 
     def show_details(self, history=False):
         dialog = Adw.AlertDialog(heading='Change history' if history else 'Installation and restoration record')
@@ -488,10 +515,9 @@ class Window(Adw.ApplicationWindow):
         if self.busy or self.refreshing:
             return
         self.busy = True
+        self.operation_error = None
         self.sensitivity()
-        self.banner.set_title('Working… Ubuntu may ask you to authenticate.')
-        self.banner.set_button_label('')
-        self.banner.set_revealed(True)
+        self.render_status()
         def worker():
             try:
                 result, error = action(), None
@@ -503,6 +529,7 @@ class Window(Adw.ApplicationWindow):
             GLib.idle_add(done, result, error)
         def done(result, error):
             self.busy = False
+            self.operation_error = error
             if error:
                 dialog = Adw.AlertDialog(heading='The operation did not finish', body=error + '\n\nNo further steps were run. Any existing recovery record has been kept so you can retry.')
                 dialog.add_response('close', 'Close')
@@ -512,27 +539,73 @@ class Window(Adw.ApplicationWindow):
             if result and result.startswith('Uninstalled.') and self.backend.install.source == self.backend.install.app:
                 self.close()
             else:
-                self.refresh()
+                self.refresh(clear_operation_error=False)
         threading.Thread(target=worker, daemon=True).start()
+
+    def selection_changed(self):
+        if self.loaded and not self.loading_preferences:
+            self.render_status()
+
+    def render_status(self):
+        dirty = self.loaded and any(self.selected()[key] != self.state.get('preferences', DEFAULTS)[key]
+                                   for key in ('keyboard', 'layers', 'excluded_apps'))
+        self.lifecycle = lifecycle(self.state if self.checked_at else None, self.check_error,
+                                   dirty, self.operation_error)
+        info = self.lifecycle
+        if self.busy or self.refreshing:
+            info = dict(kind='unknown', title='Working…' if self.busy else 'Checking…', banner=False,
+                        message='Ubuntu may request authentication.' if self.busy else 'Reading the current state. You can keep browsing.')
+        icons = {'healthy': 'emblem-ok-symbolic', 'unknown': 'dialog-question-symbolic',
+                 'attention': 'dialog-warning-symbolic', 'off': 'media-playback-pause-symbolic'}
+        self.health_icon.set_from_icon_name(icons[info['kind']])
+        self.health_label.set_text(info['title'])
+        for css in ('success', 'warning', 'dim-label'):
+            self.health_icon.remove_css_class(css)
+        self.health_icon.add_css_class({'healthy': 'success', 'attention': 'warning'}.get(info['kind'], 'dim-label'))
+        checked = f'Last checked at {self.checked_at}. This is a snapshot; use Check status after external changes.' if self.checked_at else 'No successful check in this window yet.'
+        self.health_box.set_tooltip_text(info['message'] + '\n\n' + checked)
+        self.banner.set_title(info['message'])
+        self.banner.set_button_label(info.get('action_label', ''))
+        self.banner.set_revealed(info['banner'])
+        self.status_row.set_title(info['title'])
+        self.status_row.set_subtitle(info['message'] + (' Last checked at ' + self.checked_at + '.' if self.checked_at and not self.busy and not self.refreshing else ''))
+
+    def status_action(self):
+        action = self.lifecycle.get('action')
+        if action == 'check':
+            self.refresh()
+        elif action == 'install':
+            self.install_clicked()
+        elif action == 'apply':
+            self.apply_keyboard()
+        elif action == 'restore':
+            self.stack.set_visible_child_name('restore')
 
     def sensitivity(self):
         idle = not self.busy and not self.refreshing
-        enabled = bool(self.state.get('installed')) and not self.state.get('update') and idle
+        enabled = bool(self.state.get('installed')) and not self.state.get('update') and not self.state.get('problems') and not self.check_error and idle
         for control in self.guarded:
             control.set_sensitive(enabled)
         self.apply_button.set_sensitive(enabled and self.state.get('adapter_ready', True))
-        self.stop_button.set_sensitive(bool(self.state.get('running')) and idle)
+        self.stop_button.set_sensitive(idle and (bool(self.state.get('running')) or bool(self.state.get('bridge')) or self.check_error is not None))
+        for control in self.recovery_controls:
+            control.set_sensitive(idle)
+        self.hardware.set_sensitive(enabled)
+        self.exclusions.set_sensitive(enabled)
+        self.chrome.set_sensitive(enabled)
+        self.layer_sensitivity()
         self.banner.set_sensitive(idle)
         self.check_button.set_sensitive(idle)
 
-    def refresh(self):
+    def refresh(self, clear_operation_error=True):
         # systemctl and file reads run off the GTK event loop.
         if self.refreshing or self.busy:
             return
         self.refreshing = True
+        if clear_operation_error:
+            self.operation_error = None
         self.check_button.set_label('Checking…')
-        self.banner.set_title('Reading your setup… You can keep browsing.')
-        self.banner.set_button_label('')
+        self.render_status()
         self.sensitivity()
         def worker():
             try:
@@ -542,29 +615,17 @@ class Window(Adw.ApplicationWindow):
             GLib.idle_add(done, state, error)
         def done(state, error):
             self.refreshing = False
-            self.check_button.set_label('Check setup')
+            self.check_button.set_label('Check status')
             if self.busy:
                 return
-            self.state = state
-            if error:
-                self.banner.set_title('Could not read the installation: ' + error)
-                self.banner.set_button_label('')
-            elif not state['installed'] or state['update']:
-                self.banner.set_title('Install the dashboard to manage reversible changes.' if not state['installed'] else 'A previous version is installed. Replace it to use these controls.')
-                self.banner.set_button_label('Install' if not state['installed'] else 'Update installation')
-            else:
-                self.banner.set_title('Installed · changes are tracked for restoration')
-                self.banner.set_button_label('')
-            running = state.get('running')
-            self.status_row.set_title('Keyboard status unavailable' if error else 'Keyboard running' if running else 'Keyboard stopped')
-            self.status_row.set_subtitle('Selected changes need Apply and start.' if running else 'Native key behavior. Nothing starts automatically at login.')
-            if running and not state.get('bridge'):
-                self.status_row.set_subtitle('Desktop adapter is unavailable. Stop and restart the keyboard session.')
-            elif state.get('installed') and not state.get('adapter_ready', True):
-                self.status_row.set_title('Keyboard adapter not loaded')
-                self.status_row.set_subtitle('After a first install or an extension rename, log out and back in, then Check setup. If you just unlocked, try Check setup again. Wallpaper and dock controls are still available.')
+            self.check_error = error
+            self.checked_at = datetime.now().strftime('%H:%M:%S') if not error else None
+            if not error:
+                self.state = state
+            running = self.state.get('running')
             self.apply_button.set_label('Apply and restart' if running else 'Apply and start')
             if not self.loaded and not error:
+                self.loading_preferences = True
                 prefs = state.get('preferences', DEFAULTS)
                 self.hardware.set_selected(1 if prefs['keyboard'] == 'apple' else 0)
                 for key, row in self.switches.items():
@@ -574,12 +635,14 @@ class Window(Adw.ApplicationWindow):
                 self.layer_sensitivity()
                 folder = prefs['wallpaper_folder']
                 if not folder:
-                    folder = next((str(p) for p in (Path.home()/'Pictures/Wallpapers', Path.home()/'Downloads/wallpapers', Path.home()/'Downloads/wp') if p.is_dir()), '')
+                    folder = state.get('gallery_folder', '')
                 self.preview_folder = self.preview_folder or (Path(folder) if folder else None)
                 self.load_gallery()
                 self.loaded = True
+                self.loading_preferences = False
             count = sum('dash-to-dock' in p for p in state.get('appearance', {}))
             self.dock_status.set_text(f'{count} dock settings saved for restoration.' if count else 'No dock changes recorded by this app.')
+            self.render_status()
             self.sensitivity()
         threading.Thread(target=worker, daemon=True).start()
 

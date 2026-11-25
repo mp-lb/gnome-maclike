@@ -9,7 +9,7 @@ LAYERS = {
     'control': ('Separate physical Control', 'Control becomes Super in apps. Standalone terminals keep Control.'),
     'terminal': ('Terminal shortcuts', 'Command-C/V copies and pastes; Command-T/W opens and closes tabs.'),
     'desktop': ('Desktop shortcuts', 'Command-Tab switches apps; Q quits; H minimizes; Control-Command-Q locks. Control-Up: overview. Control-Down: show desktop. Control alone does nothing.'),
-    'navigation': ('Text navigation', 'Command-arrows: line/document edges. Option-arrows: words. Shift selects. Command-Backspace: delete to line start in Chrome/Chromium.'),
+    'navigation': ('Text navigation', 'Command-arrows: line/document edges. Option-arrows: words. Shift selects. Command-Backspace: delete to line start in Chrome/Chromium and Codex.'),
 }
 DEFAULTS = {'keyboard': 'pc', 'layers': {key: True for key in LAYERS}, 'excluded_apps': [], 'wallpaper_folder': ''}
 
@@ -89,7 +89,7 @@ def compile_profile(source, preferences):
         # entire first paragraph at column zero; terminals have shell semantics.
         # Keep this bounded rather than injecting a selection/deletion macro.
         keymaps.append({'name': 'Command delete to line start', 'mode': 'command', 'exact_match': True,
-                        'application': {'only': '/(?i)^(chromium|chromium-browser|google-chrome|google-chrome-stable|google-chrome-beta|google-chrome-unstable)$/',
+                        'application': {'only': '/(?i)^(chromium|chromium-browser|google-chrome|google-chrome-stable|google-chrome-beta|google-chrome-unstable|chatgpt|codex)$/',
                                         'not': prefs['excluded_apps']},
                         'remap': {'BackSpace': 'Shift-BackSpace'}})
         option = {}

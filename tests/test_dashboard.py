@@ -91,7 +91,7 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(rule['remap'], {'BackSpace': 'Shift-BackSpace'})
         self.assertEqual(rule['application']['not'], ['chromium'])
         pattern = rule['application']['only'][1:-1]
-        for app in ('chromium', 'Chromium', 'chromium-browser', 'Google-chrome', 'google-chrome-stable'):
+        for app in ('chromium', 'Chromium', 'chromium-browser', 'Google-chrome', 'google-chrome-stable', 'Chatgpt', 'chatgpt', 'codex'):
             self.assertIsNotNone(re.fullmatch(pattern, app))
         for app in ('', 'org.gnome.TextEditor', 'org.gnome.Nautilus', 'org.gnome.Terminal', 'kitty'):
             self.assertIsNone(re.fullmatch(pattern, app))

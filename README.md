@@ -23,7 +23,7 @@ Open the GUI as your normal user from this directory:
 python3 -B gui.py
 ```
 
-Choose **Check setup**, then **Install** (or **Update installation** for an older version), then
+Choose **Check status**, then **Install** (or **Update installation** for an older version), then
 **Apply and start** on the Keyboard page. Ubuntu's normal authentication dialog
 handles starting/stopping the privileged remapper. Updates fetch and verify the
 new binary before removing the old installation, then restore old managed
@@ -96,7 +96,7 @@ replace normal Linux browser back/forward navigation. Specialized editors and
 terminal programs can interpret these keys differently. Turn the layer off or
 exclude an app rather than adding an open-ended collection of exceptions.
 
-Command+Backspace sends Control+Shift+Backspace in Chrome/Chromium while Text
+Command+Backspace sends Control+Shift+Backspace in Chrome/Chromium and Codex while Text
 navigation is enabled, deleting to the current line's start in text fields.
 It uses native deletion without selection macros or clipboard changes. Other
 apps, including standalone terminals, retain their existing behavior. GTK's
@@ -106,6 +106,19 @@ terminals can still intercept the shortcut.
 
 Setup is checked only on request or after an explicit operation, never on startup
 or a polling timer. File reads and image decoding run off the GTK event loop.
+
+The header distinguishes **Not checked** (existing changes might already be
+active), **Active** (green check, no banner), **Keyboard off** (intentional native
+keyboard behavior; appearance changes remain), and **Needs attention** with a
+specific explanation and next action. Edited keyboard choices show **Changes not
+applied** until applied. A failed operation remains visible after its status
+refresh. Checks compare installed file hashes, running services and saved keyboard
+choices, read recovery history, and compare tracked desktop settings. The timestamp
+is a snapshot, not continuous monitoring; recheck after changes outside the app.
+The header's Restore button and recovery actions remain available before a check
+or after a failed check. Restore includes an emergency-stop reminder and a terminal
+uninstall command for use if the GUI cannot open.
+
 The image-only gallery reads local JPEG/PNG/WebP images, filters for at least
 5120×2880 landscape images, and shows names and resolution in the preview. A folder can show
 up to 200 candidate files. Images stay at their original paths: do not move or
@@ -199,7 +212,7 @@ Control signal so terminal interrupts and Command shortcuts remain distinct.
   On a PC keyboard this is physical Control+left Alt+Q.
 - Physical Control+Up: open GNOME's overview; Control alone does nothing.
 - Physical Control+Down: show desktop; press again to restore windows.
-- Command+Backspace: delete to line start in Chrome/Chromium text fields.
+- Command+Backspace: delete to line start in Chrome/Chromium and Codex text fields.
 - Physical Ctrl+Alt+Esc: emergency stop (Ctrl+Super+Esc also works).
 
 The JSON files use upstream Xremap's press/release actions and modes. Pressing

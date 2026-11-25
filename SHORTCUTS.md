@@ -79,7 +79,7 @@ implemented. The base swap may still emit a combination for a planned or exclude
 entry, so those labels do not mean the physical keys are disabled or harmless.
 
 Command+Backspace now uses the native Control+Shift+Backspace binding in
-Chrome/Chromium only, documented
+Chrome/Chromium and Codex (Chatgpt app), documented
 in [Chromium's editing implementation](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/third_party/blink/renderer/core/editing/editing_behavior.cc).
 [GTK's multiline text view](https://github.com/GNOME/gtk/blob/main/gtk/gtktextview.c)
 uses paragraph deletion, with different behavior at line boundaries (including
