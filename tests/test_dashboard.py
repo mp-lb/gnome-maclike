@@ -119,6 +119,18 @@ class ProfileTests(unittest.TestCase):
         prefs['layers']['desktop'] = False
         self.assertFalse(any(k['name'] == rule['name'] for k in compile_profile(SOURCE,prefs)['keymap']))
 
+    def test_desktop_toggle_works_without_focused_app_and_respects_layers(self):
+        prefs = copy.deepcopy(DEFAULTS)
+        for separate in (False, True):
+            prefs['layers']['control'] = separate
+            rule = next(k for k in compile_profile(SOURCE, prefs)['keymap'] if k['name'] == 'Control Down toggles desktop')
+            self.assertEqual(rule['remap'], {'Super_R-Down': 'Super_L-d', 'Ctrl-Down': 'Super_L-d'})
+            self.assertEqual(rule['mode'], 'default')  # Command+Down remains document navigation.
+            self.assertTrue(rule['exact_match'])
+            self.assertNotIn('only', rule['application'])  # The second press must work on the desktop.
+        prefs['layers']['desktop'] = False
+        self.assertFalse(any(k['name'] == rule['name'] for k in compile_profile(SOURCE, prefs)['keymap']))
+
 
 class RestorationTests(unittest.TestCase):
     def setUp(self):

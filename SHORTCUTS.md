@@ -69,10 +69,10 @@ catalog does not fix them or certify live behavior.
 
 | Decision | Scope |
 | --- | --- |
-| Keep and validate | Base editing/browser shortcuts, app switching, Control+Up overview, quit/lock, the minimize approximation, terminal clipboard and text navigation. |
+| Keep and validate | Base editing/browser shortcuts, app switching, Control+Up overview / Control+Down desktop reveal, quit/lock, the minimize approximation, terminal clipboard and text navigation. |
 | Next | Same-app window cycling, Command+M, launcher/search, word deletion, plain-style paste and basic screenshot entrypoints. |
-| Later | App Exposé (Control+Down), capture-to-clipboard variants, fullscreen, browser tab/history translation and a deliberate Files policy. |
-| Not planned | Bulk-close/hide emulation, global force quit, session/power shortcuts, empty-Trash commands, Apple services/hardware and wholesale app-menu emulation. |
+| Later | Capture-to-clipboard variants, fullscreen, browser tab/history translation and a deliberate Files policy. |
+| Not planned | App Exposé (Control+Down deliberately means Show Desktop), bulk-close/hide emulation, global force quit, session/power shortcuts, empty-Trash commands, Apple services/hardware and wholesale app-menu emulation. |
 
 “Next” and “Later” express priority, not a delivery date. Planned entries are not
 implemented. The base swap may still emit a combination for a planned or excluded

@@ -8,7 +8,7 @@ LAYERS = {
     'command': ('Command key', 'Left Alt becomes Command on PC keyboards; left Super becomes Option.'),
     'control': ('Separate physical Control', 'Control becomes Super in apps. Standalone terminals keep Control.'),
     'terminal': ('Terminal shortcuts', 'Command-C/V copies and pastes; Command-T/W opens and closes tabs.'),
-    'desktop': ('Desktop shortcuts', 'Command-Tab switches apps; Q quits; H minimizes; Control-Command-Q locks. Control-Up opens overview; Control alone does nothing.'),
+    'desktop': ('Desktop shortcuts', 'Command-Tab switches apps; Q quits; H minimizes; Control-Command-Q locks. Control-Up: overview. Control-Down: show desktop. Control alone does nothing.'),
     'navigation': ('Text navigation', 'Command-arrows: line/document edges. Option-arrows: words. Shift selects. Command-Backspace: delete to line start in Chrome/Chromium.'),
 }
 DEFAULTS = {'keyboard': 'pc', 'layers': {key: True for key in LAYERS}, 'excluded_apps': [], 'wallpaper_folder': ''}
@@ -65,6 +65,11 @@ def compile_profile(source, preferences):
         keymaps.append({'name': 'Control Up opens overview', 'mode': 'default', 'exact_match': True,
                         'application': overview_match,
                         'remap': {'Super_R-Up': 'Super_L', 'Ctrl-Up': 'Super_L'}})
+        # Keep the toggle available when revealing the desktop leaves no focused
+        # app. The native Super+D action restores windows on the next press.
+        keymaps.append({'name': 'Control Down toggles desktop', 'mode': 'default', 'exact_match': True,
+                        'application': {'not': prefs['excluded_apps']},
+                        'remap': {'Super_R-Down': 'Super_L-d', 'Ctrl-Down': 'Super_L-d'}})
     if layers['navigation']:
         app_match = {'only': '/.+/'}
         if prefs['excluded_apps']:

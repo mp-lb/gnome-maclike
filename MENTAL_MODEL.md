@@ -92,8 +92,11 @@ Super_L for GNOME's overview. While the Desktop shortcuts layer runs, the app
 sets GNOME's overlay key to Super_L only, so physical Control alone is quiet.
 Stop, failed start and uninstall restore the recorded original setting and
 preserve newer external changes. After an emergency exit/crash the setting stays
-until Stop/uninstall restores it. Control+Down is macOS App Exposé, a separate
-current-app overview we do not implement; it is not Show Desktop.
+until Stop/uninstall restores it. Control+Down deliberately toggles Show Desktop
+instead of macOS App Exposé: Up reveals windows, Down reveals the desktop.
+It sends native Super+D and does not require a focused app, so a second press on
+the desktop restores windows. Application exclusions still apply. Control+D
+remains available in ordinary apps; standalone terminals retain Control+D as EOF.
 They are not an arbitrary stack of plugins. Disabling the Command layer removes
 its dependent mappings; emergency stop remains available.
 Implementation: [profiles.py](profiles.py), [config.json](config.json),

@@ -57,8 +57,11 @@ def build_catalog():
     add('overview', 'Control+↑', 'Window overview / Mission Control', 'Desktop and capture', 'mapped',
         'Opens GNOME’s native overview. Uses the physical Control key, including in standalone terminals. Control alone does not open overview. The original GNOME overlay setting is saved and restored by Stop or uninstall; a newer external edit is preserved.',
         'desktop', bindings=[('Control Up opens overview', 'Super_R-Up'), ('Control Up opens overview', 'Ctrl-Up')])
-    add('app-expose', 'Control+↓', 'Show current app windows', 'Apps and windows', 'planned',
-        'macOS App Exposé is separate from Show Desktop. GNOME has no matching built-in filtered overview here; use Control+Up for window switching for now.', 'desktop', 'apple', (), 'Later')
+    add('show-desktop', 'Control+↓', 'Show / restore desktop', 'Desktop and capture', 'approximation',
+        'Deliberate MacLike choice: Control+Up shows windows; Control+Down reveals the desktop. Press Down again with Control to restore the windows. Sends GNOME’s Super+D shortcut, including from standalone terminals and when no app is focused. macOS uses Control+Down for App Exposé instead. Requires the native Super+D Show Desktop binding.',
+        'desktop', 'project', [('Control Down toggles desktop', 'Super_R-Down'), ('Control Down toggles desktop', 'Ctrl-Down')])
+    add('app-expose', 'macOS Control+↓', 'Show current app windows', 'Apps and windows', 'not_planned',
+        'MacLike deliberately assigns Control+Down to Show Desktop. Use Control+Up for the all-window overview; no filtered App Exposé is implemented.', 'desktop', 'apple', (), 'Not planned')
 
     # These are examples of the base translation, not per-application patches.
     for id, key, action in [('cut','X','Cut'), ('copy','C','Copy'), ('paste','V','Paste'),

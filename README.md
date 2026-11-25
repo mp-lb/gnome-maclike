@@ -126,8 +126,15 @@ The shortcut emits a left-Super tap and also works in recognized terminals.
 This setting has the same before/after journal as appearance settings. Stop,
 failed start and uninstall restore it, preserving newer external edits. An
 emergency exit or crash releases the keyboard immediately; use Stop or uninstall
-to restore the overlay setting afterward. Control+Down (macOS App Exposé) remains
-unimplemented; it is distinct from Show Desktop.
+to restore the overlay setting afterward.
+
+Physical Control+Down toggles Show Desktop through GNOME's existing Super+D
+binding: press it again to restore the windows. This deliberately differs from
+macOS App Exposé, pairing Up for window overview with Down for desktop reveal.
+It works in standalone terminals and with no focused app, respects app exclusions,
+and belongs to the Desktop shortcuts layer. No additional GNOME setting changes
+are needed; Super+D must remain bound to Show Desktop. Physical Control+D remains
+an alternative in ordinary apps; in terminals it retains its native EOF meaning.
 
 Before the first appearance change, the app records each original raw dconf value,
 including whether the key was unset. Restore returns those values, not factory
@@ -191,6 +198,7 @@ Control signal so terminal interrupts and Command shortcuts remain distinct.
 - Control+Command+Q: lock the screen through GNOME's screen-lock service.
   On a PC keyboard this is physical Control+left Alt+Q.
 - Physical Control+Up: open GNOME's overview; Control alone does nothing.
+- Physical Control+Down: show desktop; press again to restore windows.
 - Command+Backspace: delete to line start in Chrome/Chromium text fields.
 - Physical Ctrl+Alt+Esc: emergency stop (Ctrl+Super+Esc also works).
 
