@@ -457,6 +457,7 @@ class Window(Adw.ApplicationWindow):
         enabled = bool(self.state.get('installed')) and not self.state.get('update') and idle
         for control in self.guarded:
             control.set_sensitive(enabled)
+        self.apply_button.set_sensitive(enabled and self.state.get('adapter_ready', True))
         self.stop_button.set_sensitive(bool(self.state.get('running')) and idle)
         self.banner.set_sensitive(idle)
         self.check_button.set_sensitive(idle)
@@ -496,6 +497,9 @@ class Window(Adw.ApplicationWindow):
             self.status_row.set_subtitle('Selected changes need Apply and start.' if running else 'Native key behavior. Nothing starts automatically at login.')
             if running and not state.get('bridge'):
                 self.status_row.set_subtitle('Desktop adapter is unavailable. Stop and restart the keyboard session.')
+            elif state.get('installed') and not state.get('adapter_ready', True):
+                self.status_row.set_title('Keyboard adapter not loaded')
+                self.status_row.set_subtitle('After a first install or an extension rename, log out and back in, then Check setup. If you just unlocked, try Check setup again. Wallpaper and dock controls are still available.')
             self.apply_button.set_label('Apply and restart' if running else 'Apply and start')
             if not self.loaded and not error:
                 prefs = state.get('preferences', DEFAULTS)

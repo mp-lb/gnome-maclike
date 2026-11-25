@@ -1,6 +1,7 @@
 """Dashboard operations, kept separate from GTK and serialized by the installer."""
 import hashlib
 import json
+import subprocess
 
 from control import APP_FILES, Install, engine_payload, preflight
 from preferences import Appearance, read_preferences, save_preferences
@@ -21,9 +22,16 @@ class Dashboard:
             for name in APP_FILES if name != 'xremap')
         state = install.runtime.state()
         bridge = install.runtime.state(True)
+        adapter_ready = False
+        if present and hasattr(install.runtime, 'context'):
+            try:
+                adapter_ready = not install.runtime.context().get('locked', True)
+            except (RuntimeError, subprocess.SubprocessError):
+                pass
         return {'installed': present, 'update': bool(update),
                 'running': state.get('ActiveState') == 'active',
                 'bridge': bridge.get('ActiveState') == 'active',
+                'adapter_ready': adapter_ready,
                 'preferences': read_preferences(install.record_dir),
                 'appearance': Appearance(install.record_dir).load()}
 
