@@ -15,6 +15,9 @@ from test_install import FakeDesktop, FakeRuntime, SOURCE, snapshot
 from dashboard import lifecycle
 from profiles import DEFAULTS
 from refresh_gui import refresh_dashboard
+from preferences import Appearance, DOCK, BACKGROUND
+from test_dashboard import MemoryDconf
+from dashboard import Dashboard
 
 
 class StartupTests(unittest.TestCase):
@@ -117,6 +120,42 @@ class StartupTests(unittest.TestCase):
         self.assertEqual(lifecycle(state)['title'], 'Enabled, but not running')
         self.assertEqual(lifecycle(state)['action'], 'apply')
 
+    def test_disable_restores_all_appearance_and_enable_reuses_choices(self):
+        desktop = MemoryDconf()
+        before = dict(desktop.values)
+        choices = {DOCK+'dock-position': "'BOTTOM'", BACKGROUND+'picture-uri': "'file:///chosen.jpg'"}
+        with patch('preferences.Dconf', return_value=desktop):
+            Appearance(self.install.record_dir).apply(choices)
+            self.startup.enable()
+            self.install.disable()
+            self.assertEqual(desktop.values, before)
+            self.assertEqual(self.startup.load()['appearance'], choices)
+            self.install.disable()  # Idempotent disable must keep saved choices.
+            self.assertEqual(self.startup.load()['appearance'], choices)
+            self.startup.enable()
+            self.startup.apply_appearance()
+            self.assertTrue(all(desktop.values[key] == value for key, value in choices.items()))
+            self.install.disable()
+            self.assertEqual(desktop.values, before)
+
+    def test_disabled_wallpaper_choice_waits_for_enable_and_clear_removes_choice(self):
+        desktop = MemoryDconf()
+        before = dict(desktop.values)
+        photo = self.root/'wallpaper.jpg'; photo.write_bytes(b'image')
+        with patch('preferences.Dconf', return_value=desktop):
+            dashboard = Dashboard(self.install)
+            self.assertIn('Choice saved', dashboard.appearance('wallpaper', photo))
+            self.assertEqual(desktop.values, before)
+            self.assertTrue(self.startup.load()['appearance'])
+            self.startup.enable()
+            self.startup.apply_appearance()
+            self.assertIn('wallpaper.jpg', desktop.values[BACKGROUND+'picture-uri'])
+            dashboard.appearance('restore-wallpaper')
+            self.assertFalse(self.startup.load()['appearance'])
+            self.assertEqual(desktop.values, before)
+            self.startup.apply_appearance()
+            self.assertEqual(desktop.values, before)
+
     def test_lifecycle_migration_recovers_each_module_and_preserves_preferences(self):
         import hashlib
         from preferences import save_preferences
@@ -165,6 +204,12 @@ class SystemSetupTests(unittest.TestCase):
         self.setup.uninstall()
         self.setup.uninstall()
         self.assertEqual(snapshot(self.root), self.before)
+
+    def test_protected_service_exposes_its_socket_and_config_but_not_home(self):
+        unit = payloads(1000, 'test-user', b'engine')['unit'].decode()
+        self.assertIn('ProtectHome=tmpfs\n', unit)
+        self.assertIn('BindReadOnlyPaths=/run/user/1000/gnome-maclike\n', unit)
+        self.assertNotIn('/home/', unit)
 
     def test_interrupted_system_publications_recover_and_remove(self):
         link = os.link

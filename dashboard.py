@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 
 from control import APP_FILES, Install, engine_payload, preflight
-from preferences import Appearance, read_preferences, save_preferences
+from preferences import Appearance, ALLOWED, read_preferences, save_preferences
 from profiles import validate
 from startup import Startup
 
@@ -29,7 +29,9 @@ def lifecycle(state=None, error=None, dirty=False, operation_error=None):
         return result('attention', 'Update needed', 'This copy differs from the installed version. Review the replacement options before continuing.', 'install', 'Review update')
     enabled = state.get('enabled', state.get('running', False))
     if not enabled and not state.get('running') and not state.get('bridge'):
-        return result('off', 'Disabled', 'Keyboard changes are off and will stay off at login. Dock and wallpaper choices remain applied. Enable starts the keyboard now and at future logins.', banner=False)
+        if state.get('appearance'):
+            return result('attention', 'Restoration incomplete', 'MacLike is disabled, but some tracked desktop changes remain. Disable retries restoration; Doctor shows the saved record.', 'restore', 'Open Doctor')
+        return result('off', 'Disabled', 'MacLike changes are off and will stay off at login. Your saved keyboard, dock and wallpaper choices are kept for the next Enable.', banner=False)
     if not state.get('adapter_ready', True):
         return result('attention', 'Keyboard unavailable', 'GNOME’s keyboard adapter is not available. After a first install, log out and back in, then check again. If you just unlocked, retry now. Dock and wallpaper controls remain available.', 'check', 'Retry check')
     if state.get('running') != state.get('bridge'):
@@ -137,24 +139,35 @@ class Dashboard:
 
     def stop(self):
         self.install.disable()
-        return 'Disabled. Native keyboard behavior is restored; automatic startup is off. Your saved choices are kept.'
+        return 'Disabled. Keyboard, dock and wallpaper changes are restored; automatic startup is off. Your saved choices are kept. Newer external settings are preserved.'
 
     def appearance(self, action, value=None):
         if not self.install.record.exists():
             raise RuntimeError('Install GNOME MacLike first so changes have a recovery record.')
         with self.install.operation():
             appearance = Appearance(self.install.record_dir)
+            startup = Startup(self.install)
+            choices = startup.load()
             if action == 'dock':
-                appearance.dock()
+                changes = appearance.dock_changes()
             elif action == 'wallpaper':
-                appearance.wallpaper(value)
+                changes = appearance.wallpaper_changes(value)
             elif action in ('restore-dock', 'restore-wallpaper'):
-                skipped = appearance.restore(action.removeprefix('restore-'))
+                group = action.removeprefix('restore-')
+                choices['appearance'] = {key: item for key, item in choices['appearance'].items() if ALLOWED[key] != group}
+                startup.save(choices)
+                skipped = appearance.restore(group)
                 if skipped:
                     return 'Restored our changes; preserved newer changes made outside GNOME MacLike.'
+                return 'Restored this section and cleared its saved MacLike choice.'
             else:
                 raise ValueError('Unknown appearance action.')
-        return 'Desktop setting updated. Its original value is saved for restoration.'
+            choices['appearance'].update(changes)
+            startup.save(choices)
+            if choices['enabled']:
+                appearance.apply(changes)
+                return 'Desktop setting updated. Its original value is saved for restoration.'
+        return 'Choice saved. Enable MacLike to apply it.'
 
     def save_folder(self, folder):
         # Browsing the source preview must not add files to a legacy installation.

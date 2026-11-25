@@ -220,7 +220,9 @@ See the [README's recovery and uninstall boundaries](README.md#audit-and-uninsta
 
 Enable remembers intent across graphical logins. The window is only a dashboard;
 closing it has no lifecycle effect. Disable commits the off preference first,
-removes the login hook and stops remapping. Doctor compares that preference with
+removes the login hook, stops remapping and restores managed keyboard, dock and
+wallpaper settings. Choices remain saved for the next Enable. Appearance choices
+made while disabled are saved without changing the desktop. Doctor compares that preference with
 actual service health. Enabled-but-stopped needs attention; disabled-and-stopped
 is healthy intentional behavior. Uninstall removes both user and administrator
 integration as well as restoring managed settings. Emergency stop ends this

@@ -388,7 +388,7 @@ class Window(Adw.ApplicationWindow):
         dialog = Adw.AlertDialog(heading='Use this wallpaper?', body=f'{path.name}\n{width:,} × {height:,}')
         dialog.set_extra_child(Gtk.Picture.new_for_paintable(Gdk.Texture.new_for_pixbuf(pixbuf)))
         dialog.add_response('cancel', 'Cancel')
-        dialog.add_response('apply', 'Set wallpaper')
+        dialog.add_response('apply', 'Set wallpaper' if self.state.get('enabled') else 'Save wallpaper choice')
         dialog.set_response_appearance('apply', Adw.ResponseAppearance.SUGGESTED)
         dialog.set_response_enabled('apply', bool(self.state.get('installed')) and not self.state.get('update') and not self.busy)
         dialog.connect('response', lambda _, response: self.work(lambda: self.backend.appearance('wallpaper', path)) if response == 'apply' else None)
@@ -418,10 +418,8 @@ class Window(Adw.ApplicationWindow):
     def restore_page(self):
         page = self.page('Doctor', 'applications-engineering-symbolic', 'Check your setup, inspect its history, or remove it completely.')
         group = self.group(page, 'Your exit routes')
-        self.recovery_controls.append(self.action_row(group, 'Disable keyboard changes', 'Keeps shortcuts off now and at future logins. Restores the saved overview-key setting. Wallpaper and dock stay as they are.',
+        self.recovery_controls.append(self.action_row(group, 'Disable MacLike', 'Restores keyboard, dock and wallpaper settings and keeps automatic startup off. Your MacLike choices are saved for the next Enable.',
                         'Disable', lambda: self.work(self.backend.stop), managed=False))
-        self.recovery_controls.append(self.action_row(group, 'Restore all changes', 'Disables automatic startup and restores our keyboard, dock and wallpaper settings. Keeps the application installed.',
-                        'Restore all', lambda: self.confirm('Restore your previous settings?', 'Stop keyboard remapping and restore the settings saved before MacLike changed them? Newer external edits will be preserved.', self.backend.restore), managed=False))
         self.recovery_controls.append(self.action_row(group, 'Uninstall GNOME MacLike', 'Disables startup, removes the system integration, restores managed settings and removes installed files and saved choices. Your wallpaper images stay untouched.',
                         'Uninstall', self.uninstall_clicked, 'destructive-action', managed=False))
         page.append(label('Restoration means your values from before this app changed them—not factory defaults. '
@@ -600,7 +598,7 @@ class Window(Adw.ApplicationWindow):
         self.apply_button.set_sensitive(bool(self.state.get('installed')) and not self.state.get('update')
                                         and self.state.get('can_enable', not self.state.get('problems'))
                                         and not self.check_error and idle)
-        self.stop_button.set_sensitive(idle and (bool(self.state.get('enabled')) or bool(self.state.get('running')) or bool(self.state.get('bridge')) or self.check_error is not None))
+        self.stop_button.set_sensitive(idle and (bool(self.state.get('enabled')) or bool(self.state.get('running')) or bool(self.state.get('bridge')) or bool(self.state.get('appearance')) or self.check_error is not None))
         for control in self.recovery_controls:
             control.set_sensitive(idle)
         self.hardware.set_sensitive(enabled)

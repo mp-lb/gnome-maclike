@@ -543,13 +543,18 @@ class Install:
             self.stop()
             self.desktop_change('enable extension', {'extension': 'enabled'}, self.desktop.enable)
             startup.enable()
+            startup.apply_appearance()
         startup.start_session()
 
     def disable(self):
         from startup import Startup
+        from preferences import Appearance
         with self.operation():
-            Startup(self).disable()
+            startup = Startup(self)
+            startup.remember_appearance()
+            startup.disable()
             self.stop()
+            Appearance(self.record_dir).restore()
 
     def login(self):
         from startup import Startup

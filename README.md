@@ -51,8 +51,9 @@ publication, retry the same command while stopped before starting again.
 The host must already provide Python GObject, GTK 4 and libadwaita 1.5+. No packages
 are installed. Keyboard remapping runs independently of the window: closing the
 dashboard does not stop it. **Enable** persists across login and reboot. **Disable**
-restores native keyboard behavior and removes automatic startup; saved layers are
-kept. Dock and wallpaper choices remain applied until explicitly restored. GUI controls and generated configurations
+restores keyboard, dock and wallpaper settings and removes automatic startup.
+All your MacLike choices are kept, so Enable can put them back. Choosing a dock
+or wallpaper while disabled saves the choice without changing the desktop. GUI controls and generated configurations
 do not overwrite any GNOME keybinding settings.
 
 The backend CLI remains available for recovery and automation:
@@ -126,7 +127,7 @@ available. Edited choices expose **Save changes**. A failed operation stays visi
 with its explanation. Doctor compares file hashes, services, saved choices,
 startup ownership and tracked desktop settings. Its timestamp is a snapshot, not
 continuous monitoring. The Doctor tab stays available before checks or after
-errors and contains Disable, full settings restoration, history and Uninstall.
+errors and contains Disable, history and Uninstall. Disable itself restores all managed settings.
 No duplicate recovery buttons appear in the header.
 
 The image-only gallery reads local JPEG/PNG/WebP images, filters for at least
@@ -181,7 +182,7 @@ The log is local and user-writable, not a tamper-proof forensic record. Service
 exits outside the app (logout, emergency stop, crash) are observed by systemd, not
 continuously monitored by this optional dashboard.
 
-Export a copy from Restore, or choose **Save history and uninstall** to include
+Export a copy from Doctor, or choose **Save history and uninstall** to include
 the final uninstall result. Exports must use a new filename. A normal uninstall
 removes the internal history with the rest of the app; an explicitly exported
 copy is yours to keep. The CLI equivalent is
@@ -323,7 +324,7 @@ The persistent footprint is:
 - `${XDG_DATA_HOME}/gnome-shell/extensions/gnome-maclike@mp-lb.dev/`: JS and metadata.
 - `${XDG_DATA_HOME}/applications/gnome-maclike.desktop`.
 - `${XDG_STATE_HOME:-~/.local/state}/gnome-maclike/`: recovery manifest and
-  operation lock, `startup.json` for enabled intent and login-file ownership,
+  operation lock, `startup.json` for enabled intent, saved appearance choices and login-file ownership,
   mutable `preferences.json` for layer/gallery choices, and
   `appearance.json` for original/applied allowlisted desktop settings, and
   `audit.jsonl` for configuration history. Atomic

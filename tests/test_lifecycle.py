@@ -32,7 +32,7 @@ class LifecycleTests(unittest.TestCase):
         state.update(running=False, bridge=False)
         self.assertEqual(lifecycle(state)['kind'], 'off')
         self.assertFalse(lifecycle(state)['banner'])
-        self.assertIn('Dock and wallpaper', lifecycle(state)['message'])
+        self.assertIn('dock and wallpaper', lifecycle(state)['message'])
 
     def test_unhealthy_snapshots_have_an_explanation_and_resolution(self):
         for change, action in [({'installed':False}, 'install'), ({'update':True}, 'install'),

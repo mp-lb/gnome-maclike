@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from preferences import read_json, audited_json
+from preferences import read_json, audited_json, Appearance, ALLOWED
 from runtime import run
 from system_setup import paths
 
@@ -25,8 +25,10 @@ class Startup:
         self.uid = os.getuid()
 
     def load(self):
-        value = read_json(self.record, {'enabled': False, 'system': False, 'files': {}, 'dirs': []})
-        if (not isinstance(value, dict) or set(value) != {'enabled', 'system', 'files', 'dirs'}
+        value = read_json(self.record, {'enabled': False, 'system': False, 'files': {}, 'dirs': [], 'appearance': {}})
+        if isinstance(value, dict) and set(value) == {'enabled', 'system', 'files', 'dirs'}:
+            value['appearance'] = {}  # Read the first lifecycle version without losing ownership.
+        if (not isinstance(value, dict) or set(value) != {'enabled', 'system', 'files', 'dirs', 'appearance'}
                 or type(value['enabled']) is not bool or type(value['system']) is not bool
                 or not isinstance(value['files'], dict) or not set(value['files']) <= set(self.paths)):
             raise ValueError('Invalid startup recovery record; preserved.')
@@ -35,10 +37,32 @@ class Startup:
             raise ValueError('Invalid startup directory record.')
         if any(not isinstance(v, str) or len(v) != 64 for v in value['files'].values()):
             raise ValueError('Invalid startup file record.')
+        if not isinstance(value['appearance'], dict) or any(
+                key not in ALLOWED or ALLOWED[key] == 'keyboard' or
+                (item is not None and (not isinstance(item, str) or len(item) > 32768))
+                for key, item in value['appearance'].items()):
+            raise ValueError('Invalid saved appearance choices.')
         return value
 
     def save(self, value):
         audited_json(self.record, value)
+
+    def remember_appearance(self):
+        value = self.load()
+        current = {path: entry['after'] for path, entry in Appearance(self.install.record_dir).load().items()
+                   if ALLOWED[path] != 'keyboard'}
+        if value['enabled']:
+            value['appearance'] = current
+        else:
+            value['appearance'].update(current)  # Keep choices during a retry of Disable.
+        self.save(value)
+
+    def apply_appearance(self):
+        appearance = Appearance(self.install.record_dir)
+        journal = appearance.load()
+        desired = self.load()['appearance']
+        appearance.apply({path: choice for path, choice in desired.items()
+                          if path not in journal or journal[path]['after'] == choice})
 
     def observe(self):
         return {key: self.install.file_state(path) for key, path in self.paths.items()}
@@ -78,7 +102,7 @@ class Startup:
 
     def system_change(self, action):
         args = ['/usr/bin/pkexec', '/usr/bin/python3', '-I', '-B', str(self.install.app/'system_setup.py'), action, str(self.uid)]
-        if action == 'install':
+        if action in ('install', 'replace'):
             engine = self.install.app/'xremap'
             args += ['--engine', str(engine), '--sha256', self.install.load()['files']['app/xremap']]
         def observed():
@@ -101,6 +125,7 @@ class Startup:
 Description=GNOME MacLike enabled keyboard
 PartOf=graphical-session.target
 After=graphical-session.target
+StartLimitIntervalSec=0
 
 [Service]
 Type=oneshot
@@ -152,7 +177,8 @@ X-GNOME-Autostart-Phase=Applications
                         Path(staged).unlink(missing_ok=True)
                 self.install.audit.change('install login file', path, lambda: self.install.file_state(path),
                                           {'sha256': value['files'][name]}, write)
-        run(['/usr/bin/systemctl', '--user', 'daemon-reload'])
+        if value['files']:
+            run(['/usr/bin/systemctl', '--user', 'daemon-reload'])
         value['enabled'] = True
         self.save(value)
 
@@ -169,7 +195,8 @@ X-GNOME-Autostart-Phase=Applications
             path = self.paths[name]
             self.install.audit.change('remove login file', path, lambda: self.install.file_state(path),
                                       None, lambda: path.unlink(missing_ok=True))
-        run(['/usr/bin/systemctl', '--user', 'daemon-reload'])
+        if value['files']:
+            run(['/usr/bin/systemctl', '--user', 'daemon-reload'])
         for directory in reversed(value['dirs']):
             try:
                 Path(directory).rmdir()
@@ -190,6 +217,6 @@ X-GNOME-Autostart-Phase=Applications
                                   lambda: self.record.unlink())
 
     def start_session(self):
-        run(['/usr/bin/systemctl', '--user', 'reset-failed', UNIT])
         # A previous emergency stop leaves the oneshot active. Restart explicitly.
+        # restart also loads a newly provisioned unit; reset-failed does not.
         subprocess.run(['/usr/bin/systemctl', '--user', 'restart', UNIT], check=True, timeout=100)

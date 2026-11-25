@@ -46,6 +46,7 @@ NoNewPrivileges=yes
 CapabilityBoundingSet=CAP_DAC_OVERRIDE
 ProtectSystem=strict
 ProtectHome=tmpfs
+BindReadOnlyPaths={runtime}
 PrivateTmp=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
@@ -202,7 +203,7 @@ class SystemSetup:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('install', 'uninstall'))
+    parser.add_argument('action', choices=('install', 'replace', 'uninstall'))
     parser.add_argument('uid', type=int)
     parser.add_argument('--engine', type=Path)
     parser.add_argument('--sha256')
@@ -210,10 +211,14 @@ def main():
     if os.geteuid() != 0 or int(os.environ.get('PKEXEC_UID', '-1')) != args.uid:
         raise RuntimeError('Run through the normal user’s administrator authentication prompt.')
     setup = SystemSetup(args.uid)
-    if args.action == 'install':
+    if args.action in ('install', 'replace'):
         engine = args.engine.read_bytes()
         if digest(engine) != args.sha256:
             raise RuntimeError('Engine changed before administrator setup.')
+        if args.action == 'replace':
+            # Replacement is an explicit administrator operation. Both sides
+            # retain the same partial-install/removal recovery guarantees.
+            setup.uninstall()
         setup.install(engine, pwd.getpwuid(args.uid).pw_name)
     else:
         setup.uninstall()

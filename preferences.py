@@ -101,21 +101,29 @@ class Appearance:
             audited_json(self.path, journal)  # Recoverable even if the following write fails.
             self.write(path, after)
 
-    def dock(self):
+    @staticmethod
+    def dock_changes():
         # Plain GNOME without Ubuntu Dock is supported without installing extensions.
         schemas = run(['gsettings', 'list-schemas']).splitlines()
         if 'org.gnome.shell.extensions.dash-to-dock' not in schemas:
             raise RuntimeError('Ubuntu Dock / Dash to Dock is not installed. No extension was added.')
-        self.apply({DOCK + key: value for key, value in DOCK_PRESET.items()})
+        return {DOCK + key: value for key, value in DOCK_PRESET.items()}
 
-    def wallpaper(self, filename):
+    def dock(self):
+        self.apply(self.dock_changes())
+
+    @staticmethod
+    def wallpaper_changes(filename):
         path = Path(filename).expanduser().resolve(strict=True)
         if not path.is_file():
             raise ValueError('Choose an image file.')
         # URI encoding makes a safe single-quoted GVariant string, including quotes.
         value = "'" + path.as_uri().replace("'", '%27') + "'"
-        self.apply({BACKGROUND + 'picture-uri': value, BACKGROUND + 'picture-uri-dark': value,
-                    BACKGROUND + 'picture-options': "'zoom'"})
+        return {BACKGROUND + 'picture-uri': value, BACKGROUND + 'picture-uri-dark': value,
+                BACKGROUND + 'picture-options': "'zoom'"}
+
+    def wallpaper(self, filename):
+        self.apply(self.wallpaper_changes(filename))
 
     def restore(self, group=None):
         journal = self.load()
