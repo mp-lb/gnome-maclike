@@ -161,7 +161,7 @@ class Window(Adw.ApplicationWindow):
         self.hardware = Adw.ComboRow(title='Keyboard layout', model=Gtk.StringList.new(['PC keyboard', 'Apple keyboard']))
         self.hardware.set_subtitle('On PC keyboards, left Alt is Command and left Super is Option.')
         group.add(self.hardware)
-        group = self.group(page, 'Mapping layers', 'Changes take effect only when you press Apply and start.')
+        group = self.group(page, 'Mapping layers', 'Changes take effect when you apply them.')
         for key, (title, subtitle) in LAYERS.items():
             row = Adw.SwitchRow(title=title, subtitle=subtitle, active=True)
             row.set_subtitle_lines(0)
@@ -551,6 +551,15 @@ class Window(Adw.ApplicationWindow):
                                    for key in ('keyboard', 'layers', 'excluded_apps'))
         self.lifecycle = lifecycle(self.state if self.checked_at else None, self.check_error,
                                    dirty, self.operation_error)
+        applied = (self.checked_at and not self.check_error and self.state.get('running')
+                   and self.state.get('bridge') and self.state.get('adapter_ready', True)
+                   and not self.state.get('pending_keyboard') and not dirty
+                   and not self.state.get('problems') and not self.state.get('update'))
+        self.apply_button.set_label('Reapply' if applied else 'Apply changes' if self.state.get('running') else 'Apply and start')
+        if applied:
+            self.apply_button.remove_css_class('suggested-action')
+        else:
+            self.apply_button.add_css_class('suggested-action')
         info = self.lifecycle
         if self.busy or self.refreshing:
             info = dict(kind='unknown', title='Working…' if self.busy else 'Checking…', banner=False,
@@ -622,8 +631,6 @@ class Window(Adw.ApplicationWindow):
             self.checked_at = datetime.now().strftime('%H:%M:%S') if not error else None
             if not error:
                 self.state = state
-            running = self.state.get('running')
-            self.apply_button.set_label('Apply and restart' if running else 'Apply and start')
             if not self.loaded and not error:
                 self.loading_preferences = True
                 prefs = state.get('preferences', DEFAULTS)

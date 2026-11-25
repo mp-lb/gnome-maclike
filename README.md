@@ -116,8 +116,10 @@ The header distinguishes **Not checked** (existing changes might already be
 active), **Active** (green check, no banner), **Keyboard off** (intentional native
 keyboard behavior; appearance changes remain), and **Needs attention** with a
 specific explanation and next action. Edited keyboard choices show **Changes not
-applied** until applied. A failed operation remains visible after its status
-refresh. Checks compare installed file hashes, running services and saved keyboard
+applied** until applied. Already-applied choices have a neutral **Reapply** button;
+pending choices or a stopped session have a primary Apply action. A failed
+operation remains visible after its status refresh. Checks compare installed
+file hashes, running services and saved keyboard
 choices, read recovery history, and compare tracked desktop settings. The timestamp
 is a snapshot, not continuous monitoring; recheck after changes outside the app.
 The header's Restore button and recovery actions remain available before a check
