@@ -49,3 +49,7 @@ The helper `refresh_gui.py --dashboard` can update compatible dashboard modules
 without reinstalling or resetting settings. It deliberately rejects remapper,
 mapping or extension changes. Full installation identity migrations need an
 explicit recoverable migration, not string replacement in installed manifests.
+`refresh_gui.py --keyboard` additionally permits compatible `profiles.py`
+updates, only with the keyboard session stopped. Retry interrupted publication
+with the same mode. Start the session afterward to compile the updated rules;
+preferences and restoration records persist.

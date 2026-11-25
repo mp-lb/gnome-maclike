@@ -12,10 +12,11 @@ from audit import Audit, NAME as AUDIT_NAME
 FILES = ('preferences.json', 'appearance.json', AUDIT_NAME)
 DOCK = '/org/gnome/shell/extensions/dash-to-dock/'
 BACKGROUND = '/org/gnome/desktop/background/'
+OVERLAY = '/org/gnome/mutter/overlay-key'
 DOCK_PRESET = {'dock-position': "'BOTTOM'", 'extend-height': 'true',
                'always-center-icons': 'true', 'dock-fixed': 'true'}
 ALLOWED = {DOCK + key: 'dock' for key in DOCK_PRESET} | {
-    BACKGROUND + key: 'wallpaper' for key in ('picture-uri', 'picture-uri-dark', 'picture-options')}
+    BACKGROUND + key: 'wallpaper' for key in ('picture-uri', 'picture-uri-dark', 'picture-options')} | {OVERLAY: 'keyboard'}
 
 
 def read_json(path, default):

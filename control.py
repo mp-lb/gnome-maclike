@@ -368,8 +368,10 @@ class Install:
                 continue
 
     def stop(self):
-        return self.audit.change('stop keyboard session', 'transient services', self.session_state,
-                                 {'services': 'absent', 'runtime_directory': 'absent'}, self._stop)
+        from preferences import Appearance
+        self.audit.change('stop keyboard session', 'transient services', self.session_state,
+                          {'services': 'absent', 'runtime_directory': 'absent'}, self._stop)
+        Appearance(self.record_dir).restore('keyboard')
 
     def _stop(self):
         self.runtime.stop()
@@ -501,7 +503,7 @@ class Install:
         print('Uninstalled. Session stopped, extension/settings restored, owned files removed.')
 
     def start(self, apple=False):
-        from preferences import read_preferences
+        from preferences import Appearance, OVERLAY, read_preferences
         with self.operation():
             info = self.load()
             if info['version'] != 2:
@@ -517,9 +519,18 @@ class Install:
             preferences = read_preferences(self.record_dir)
             if apple:
                 preferences['keyboard'] = 'apple'
-            self.audit.change('start keyboard session', 'transient services', self.session_state,
-                              {'preferences': preferences, 'services': 'active'},
-                              lambda: self.runtime.start(preferences['keyboard'] == 'apple', preferences=preferences))
+            appearance = Appearance(self.record_dir)
+            try:
+                if preferences['layers']['command'] and preferences['layers']['desktop']:
+                    appearance.apply({OVERLAY: "'Super_L'"})
+                else:
+                    appearance.restore('keyboard')
+                self.audit.change('start keyboard session', 'transient services', self.session_state,
+                                  {'preferences': preferences, 'services': 'active'},
+                                  lambda: self.runtime.start(preferences['keyboard'] == 'apple', preferences=preferences))
+            except BaseException:
+                appearance.restore('keyboard')
+                raise
         print('Xremap is running in the background. Physical Ctrl+Alt+Esc stops it.')
 
 

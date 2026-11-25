@@ -8,8 +8,8 @@ LAYERS = {
     'command': ('Command key', 'Left Alt becomes Command on PC keyboards; left Super becomes Option.'),
     'control': ('Separate physical Control', 'Control becomes Super in apps. Standalone terminals keep Control.'),
     'terminal': ('Terminal shortcuts', 'Command-C/V copies and pastes; Command-T/W opens and closes tabs.'),
-    'desktop': ('Desktop shortcuts', 'Command-Tab switches apps; Q quits; H minimizes; Control-Command-Q locks.'),
-    'navigation': ('Text navigation', 'Command-arrows: line/document edges. Option-arrows: words. Shift selects.'),
+    'desktop': ('Desktop shortcuts', 'Command-Tab switches apps; Q quits; H minimizes; Control-Command-Q locks. Control-Up opens overview; Control alone does nothing.'),
+    'navigation': ('Text navigation', 'Command-arrows: line/document edges. Option-arrows: words. Shift selects. Command-Backspace: delete to line start in Chrome/Chromium.'),
 }
 DEFAULTS = {'keyboard': 'pc', 'layers': {key: True for key in LAYERS}, 'excluded_apps': [], 'wallpaper_folder': ''}
 
@@ -55,6 +55,16 @@ def compile_profile(source, preferences):
             if prefs['excluded_apps']:
                 mapping['application']['not'] = prefs['excluded_apps']
         keymaps.append(mapping)
+    if layers['desktop']:
+        overview_match = {'only': '/.+/'}
+        if prefs['excluded_apps']:
+            overview_match['not'] = prefs['excluded_apps']
+        # Physical Control is Super_R in apps and Ctrl in standalone terminals
+        # (or when the separate-Control layer is off). Tap the managed overlay
+        # key, rather than relying on a user-defined toggle-overview binding.
+        keymaps.append({'name': 'Control Up opens overview', 'mode': 'default', 'exact_match': True,
+                        'application': overview_match,
+                        'remap': {'Super_R-Up': 'Super_L', 'Ctrl-Up': 'Super_L'}})
     if layers['navigation']:
         app_match = {'only': '/.+/'}
         if prefs['excluded_apps']:
@@ -70,6 +80,13 @@ def compile_profile(source, preferences):
                 command[shift + direction] = shift + target
         keymaps.append({'name': 'Command text navigation', 'mode': 'command', 'exact_match': True,
                         'application': app_match, 'remap': command})
+        # Native Chromium action. GTK's similarly named action can delete the
+        # entire first paragraph at column zero; terminals have shell semantics.
+        # Keep this bounded rather than injecting a selection/deletion macro.
+        keymaps.append({'name': 'Command delete to line start', 'mode': 'command', 'exact_match': True,
+                        'application': {'only': '/(?i)^(chromium|chromium-browser|google-chrome|google-chrome-stable|google-chrome-beta|google-chrome-unstable)$/',
+                                        'not': prefs['excluded_apps']},
+                        'remap': {'BackSpace': 'Shift-BackSpace'}})
         option = {}
         for direction in ('Left', 'Right'):
             for shift in ('', 'Shift-'):

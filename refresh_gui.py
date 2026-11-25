@@ -78,31 +78,34 @@ def refresh(install=None, dashboard=False):
     print('GUI updated. Restart the window; keyboard and desktop settings were preserved.')
 
 
-def refresh_dashboard(install):
-    """Publish only dashboard modules; engine, mapping and adapter stay unchanged."""
+def refresh_dashboard(install, keyboard=False):
+    """Publish dashboard modules, optionally the profile compiler while stopped."""
+    allowed = DASHBOARD_FILES | ({'profiles.py'} if keyboard else set())
     with install.operation():
+        if keyboard:
+            install.runtime.ensure_absent()
         info = install.load()
         for root in (install.app, install.record_dir, install.record):
             if root.is_symlink():
                 raise RuntimeError(f'Replaced installation path preserved: {root}')
-        for name in set(APP_FILES) - DASHBOARD_FILES - {'xremap'}:
+        for name in set(APP_FILES) - allowed - {'xremap'}:
             expected = info['files'].get('app/' + name)
             for path in (install.source / name, install.app / name):
                 if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
                     raise RuntimeError(f'{name} also changed; use the full installer.')
         stage = install.record_dir / 'staging'
-        pending = stage / 'dashboard-update.json'
+        pending = stage / ('keyboard-update.json' if keyboard else 'dashboard-update.json')
         if os.path.lexists(stage):
             if stage.is_symlink() or pending.is_symlink() or not pending.is_file():
                 raise RuntimeError('Unfinished installation preserved; recover it first.')
-            if {p.name for p in stage.iterdir()} - ({pending.name} | DASHBOARD_FILES):
+            if {p.name for p in stage.iterdir()} - ({pending.name} | allowed):
                 raise RuntimeError('Unexpected staging files preserved.')
             plan = json.loads(pending.read_text())
-            if not isinstance(plan, dict) or not set(plan) <= DASHBOARD_FILES:
+            if not isinstance(plan, dict) or not set(plan) <= allowed:
                 raise ValueError('Invalid dashboard recovery record.')
         else:
             plan = {}
-            for name in sorted(DASHBOARD_FILES):
+            for name in sorted(allowed):
                 target = install.app / name
                 if target.is_symlink():
                     raise RuntimeError(f'Modified file preserved: {target}')
@@ -150,14 +153,21 @@ def refresh_dashboard(install):
                 info['files']['app/' + name] = entry['after']
                 install.save(info)
                 os.replace(staged, target)
-            install.audit.change('update dashboard module', target, lambda: install.file_state(target),
+            install.audit.change('update keyboard module' if keyboard else 'update dashboard module', target, lambda: install.file_state(target),
                                  {'sha256': entry['after']}, publish_module)
         pending.unlink()
         stage.rmdir()
-    print('Dashboard updated. Restart the window; session, choices and original restoration values are unchanged.')
+    print('Modules updated. Restart the window; choices and original restoration values are unchanged.'
+          + (' Start the keyboard session to use the new keyboard rules.' if keyboard else ''))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--dashboard', action='store_true', help='Also refresh dashboard backend and audit modules; never remapper code/configuration.')
-    refresh(dashboard=parser.parse_args().dashboard)
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--dashboard', action='store_true', help='Also refresh dashboard backend and audit modules; never remapper code/configuration.')
+    modes.add_argument('--keyboard', action='store_true', help='Also refresh profiles.py; requires the keyboard session to be stopped. Preserves preferences and restoration state.')
+    args = parser.parse_args()
+    if args.keyboard:
+        refresh_dashboard(Install(), keyboard=True)
+    else:
+        refresh(dashboard=args.dashboard)

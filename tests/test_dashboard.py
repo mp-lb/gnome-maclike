@@ -12,7 +12,7 @@ from unittest.mock import patch
 SOURCE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SOURCE))
 from profiles import DEFAULTS, LAYERS, compile_profile, validate
-from preferences import Appearance, DOCK, DOCK_PRESET, BACKGROUND, read_preferences, save_preferences
+from preferences import Appearance, DOCK, DOCK_PRESET, BACKGROUND, OVERLAY, read_preferences, save_preferences
 from control import Install
 from runtime import Runtime
 from dashboard import Dashboard
@@ -72,12 +72,31 @@ class ProfileTests(unittest.TestCase):
             if mapping['name'].startswith('Emergency'):
                 self.assertNotIn('application', mapping)
             else:
-                self.assertEqual(mapping['application']['not'], ['chromium'])
+                self.assertIn('chromium', mapping['application']['not'])
         self.assertTrue(all('not' not in m.get('application', {}) for m in compiled['modmap']))
         prefs['layers']['command'] = False
         compiled = compile_profile(SOURCE, prefs)
         self.assertNotIn('modmap', compiled)
         self.assertEqual(len(compiled['keymap']), 1)
+
+    def test_line_deletion_is_native_and_scoped_to_chromium(self):
+        import re
+        prefs = copy.deepcopy(DEFAULTS)
+        prefs['layers']['terminal'] = False
+        prefs['excluded_apps'] = ['chromium']
+        profile = compile_profile(SOURCE, prefs)
+        rule = next(k for k in profile['keymap'] if k['name'] == 'Command delete to line start')
+        self.assertEqual(rule['mode'], 'command')
+        self.assertTrue(rule['exact_match'])
+        self.assertEqual(rule['remap'], {'BackSpace': 'Shift-BackSpace'})
+        self.assertEqual(rule['application']['not'], ['chromium'])
+        pattern = rule['application']['only'][1:-1]
+        for app in ('chromium', 'Chromium', 'chromium-browser', 'Google-chrome', 'google-chrome-stable'):
+            self.assertIsNotNone(re.fullmatch(pattern, app))
+        for app in ('', 'org.gnome.TextEditor', 'org.gnome.Nautilus', 'org.gnome.Terminal', 'kitty'):
+            self.assertIsNone(re.fullmatch(pattern, app))
+        prefs['layers']['navigation'] = False
+        self.assertFalse(any(k['name'] == rule['name'] for k in compile_profile(SOURCE, prefs)['keymap']))
 
     def test_invalid_preferences_and_regexes_are_rejected(self):
         prefs = copy.deepcopy(DEFAULTS)
@@ -88,6 +107,17 @@ class ProfileTests(unittest.TestCase):
         prefs['layers']['navigation'] = 'true'
         with self.assertRaises(ValueError):
             validate(prefs)
+
+    def test_overview_uses_physical_control_in_both_app_categories(self):
+        prefs = copy.deepcopy(DEFAULTS)
+        for separate in (False, True):
+            prefs['layers']['control'] = separate
+            rule = next(k for k in compile_profile(SOURCE, prefs)['keymap'] if k['name'] == 'Control Up opens overview')
+            self.assertEqual(rule['remap'], {'Super_R-Up': 'Super_L', 'Ctrl-Up': 'Super_L'})
+            self.assertEqual(rule['mode'], 'default')
+            self.assertTrue(rule['exact_match'])
+        prefs['layers']['desktop'] = False
+        self.assertFalse(any(k['name'] == rule['name'] for k in compile_profile(SOURCE,prefs)['keymap']))
 
 
 class RestorationTests(unittest.TestCase):
@@ -215,6 +245,39 @@ class RestorationTests(unittest.TestCase):
 
 
 class RuntimeProfileTests(unittest.TestCase):
+    def test_overlay_restoration_after_stop_failed_start_and_uninstall(self):
+        from unittest.mock import Mock
+        for initial in (None, "'Super'", "'Alt_L'"):
+            for outcome in ('stop', 'failure', 'uninstall', 'external', 'disabled'):
+                with self.subTest(initial=initial, outcome=outcome), tempfile.TemporaryDirectory() as temp:
+                    root = Path(temp)
+                    dconf = MemoryDconf()
+                    dconf.write(OVERLAY, initial)
+                    runtime = FakeRuntime()
+                    runtime.context = lambda: {'locked': False}
+                    runtime.start = Mock()
+                    install = Install(root/'data', root/'state', FakeDesktop(), SOURCE, b'engine', runtime)
+                    install.install()
+                    prefs = copy.deepcopy(DEFAULTS)
+                    if outcome == 'disabled':
+                        prefs['layers']['desktop'] = False
+                    save_preferences(install.record_dir, prefs)
+                    with patch('preferences.Dconf', return_value=dconf):
+                        if outcome == 'failure':
+                            runtime.start.side_effect = RuntimeError('authentication cancelled')
+                            with self.assertRaisesRegex(RuntimeError, 'authentication cancelled'):
+                                install.start()
+                        else:
+                            install.start()
+                            self.assertEqual(dconf.read(OVERLAY), initial if outcome == 'disabled' else "'Super_L'")
+                            if outcome == 'external':
+                                dconf.write(OVERLAY, "'Hyper_L'")
+                            if outcome != 'uninstall':
+                                install.stop()
+                        install.uninstall()
+                    self.assertEqual(dconf.read(OVERLAY), "'Hyper_L'" if outcome == 'external' else initial)
+                    self.assertEqual(snapshot(root), {})
+
     def test_generated_session_config_is_written_without_changing_installed_templates(self):
         import shutil
         binary = os.environ.get('XREMAP_TEST_BINARY')

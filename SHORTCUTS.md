@@ -69,14 +69,23 @@ catalog does not fix them or certify live behavior.
 
 | Decision | Scope |
 | --- | --- |
-| Keep and validate | Base editing/browser shortcuts, app switching, quit/lock, the minimize approximation, terminal clipboard and text navigation. |
-| Next | Same-app window cycling, Command+M, launcher/search, word/line deletion, plain-style paste and basic screenshot entrypoints. |
-| Later | Capture-to-clipboard variants, fullscreen, browser tab/history translation and a deliberate Files policy. |
+| Keep and validate | Base editing/browser shortcuts, app switching, Control+Up overview, quit/lock, the minimize approximation, terminal clipboard and text navigation. |
+| Next | Same-app window cycling, Command+M, launcher/search, word deletion, plain-style paste and basic screenshot entrypoints. |
+| Later | App Exposé (Control+Down), capture-to-clipboard variants, fullscreen, browser tab/history translation and a deliberate Files policy. |
 | Not planned | Bulk-close/hide emulation, global force quit, session/power shortcuts, empty-Trash commands, Apple services/hardware and wholesale app-menu emulation. |
 
 “Next” and “Later” express priority, not a delivery date. Planned entries are not
 implemented. The base swap may still emit a combination for a planned or excluded
 entry, so those labels do not mean the physical keys are disabled or harmless.
+
+Command+Backspace now uses the native Control+Shift+Backspace binding in
+Chrome/Chromium only, documented
+in [Chromium's editing implementation](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/third_party/blink/renderer/core/editing/editing_behavior.cc).
+[GTK's multiline text view](https://github.com/GNOME/gtk/blob/main/gtk/gtktextview.c)
+uses paragraph deletion, with different behavior at line boundaries (including
+deleting the entire first paragraph at document start in a local GTK test).
+Other apps and standalone terminals keep their existing behavior; no generic
+selection macro or shell-specific line-kill command is injected.
 
 ## What the catalog guarantees
 

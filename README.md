@@ -40,6 +40,13 @@ changes as well. It updates only an explicit set of modules, leaves the remapper
 mapping configuration and adapter unchanged, and journals each publication so an
 interrupted update can be retried. Saved settings and restoration baselines stay.
 
+For compatible `profiles.py` changes, close the window, stop the keyboard session,
+run `python3 -B refresh_gui.py --keyboard`, then start the session and reopen the
+window. This separate update mode refuses a live session and keeps the same
+audit/recovery guarantees without reinstalling or resetting settings. It does
+not permit engine, base configuration or extension changes. After an interrupted
+publication, retry the same command while stopped before starting again.
+
 The host must already provide Python GObject, GTK 4 and libadwaita 1.5+. No packages
 are installed. Keyboard remapping runs independently of the window: closing the
 dashboard does not stop it. **Stop** restores the original keyboard behavior.
@@ -80,7 +87,7 @@ disables all dependent mappings. Disabling terminal shortcuts does not remove th
 physical-Control safety exception for standalone terminals. Application exclusions
 (including a Chrome/Chromium convenience switch) disable optional shortcuts in
 those apps while keeping the base modifier mapping and emergency stop. This is
-not widget detection and adds no browser-specific remapping rules.
+not widget detection. The line-deletion rule below is scoped to Chrome/Chromium.
 
 Text navigation translates Command+Left/Right to Home/End, Command+Up/Down to
 Control+Home/End, and Option+Left/Right to Control+Left/Right. Shift variants select
@@ -88,6 +95,14 @@ text. These are generic mappings, including outside text fields; Option arrows
 replace normal Linux browser back/forward navigation. Specialized editors and
 terminal programs can interpret these keys differently. Turn the layer off or
 exclude an app rather than adding an open-ended collection of exceptions.
+
+Command+Backspace sends Control+Shift+Backspace in Chrome/Chromium while Text
+navigation is enabled, deleting to the current line's start in text fields.
+It uses native deletion without selection macros or clipboard changes. Other
+apps, including standalone terminals, retain their existing behavior. GTK's
+similarly named action has different destructive behavior at line boundaries,
+so this is deliberately a browser-scoped rule. Web apps and browser-hosted
+terminals can still intercept the shortcut.
 
 Setup is checked only on request or after an explicit operation, never on startup
 or a polling timer. File reads and image decoding run off the GTK event loop.
@@ -103,6 +118,16 @@ The dock preset changes only position, full-width layout, centered icons and
 fixed visibility in the existing Ubuntu Dock / Dash to Dock extension. Plain
 GNOME without that extension reports the missing capability instead of installing
 another extension. Wallpapers set only the light/dark background URI and zoom.
+
+The Desktop shortcuts layer uses physical Control+Up for GNOME's overview.
+While running, it sets GNOME's overlay key to left Super only; the physical
+Control key emits right Super in apps, so tapping Control no longer opens it.
+The shortcut emits a left-Super tap and also works in recognized terminals.
+This setting has the same before/after journal as appearance settings. Stop,
+failed start and uninstall restore it, preserving newer external edits. An
+emergency exit or crash releases the keyboard immediately; use Stop or uninstall
+to restore the overlay setting afterward. Control+Down (macOS App Exposé) remains
+unimplemented; it is distinct from Show Desktop.
 
 Before the first appearance change, the app records each original raw dconf value,
 including whether the key was unset. Restore returns those values, not factory
@@ -165,6 +190,8 @@ Control signal so terminal interrupts and Command shortcuts remain distinct.
 - Command+Q: GNOME requests normal application quit, allowing save dialogs.
 - Control+Command+Q: lock the screen through GNOME's screen-lock service.
   On a PC keyboard this is physical Control+left Alt+Q.
+- Physical Control+Up: open GNOME's overview; Control alone does nothing.
+- Command+Backspace: delete to line start in Chrome/Chromium text fields.
 - Physical Ctrl+Alt+Esc: emergency stop (Ctrl+Super+Esc also works).
 
 The JSON files use upstream Xremap's press/release actions and modes. Pressing

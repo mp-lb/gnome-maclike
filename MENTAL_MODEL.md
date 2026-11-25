@@ -76,8 +76,24 @@ Our optional layers add a few exceptions:
 | Control+Command+Q | Request screen lock through the bridge | GNOME's screen-lock service |
 | Command/Option arrows | Home/End or Control-arrow combinations | Focused app/control |
 
+Command+Backspace uses native Control+Shift+Backspace in Chrome/Chromium only.
+Other apps retain their existing behavior. GTK's similarly named action can
+delete an entire first paragraph when already at document start; its single-line
+fields do not share the binding. This bounded browser rule avoids both that
+behavior and a select-to-start/delete macro. Browser-hosted terminals and web
+apps can intercept it; we do not detect the focused widget.
+
 The base swap, separate physical Control, terminal exceptions, desktop actions
 and navigation are bounded switches compiled into one Xremap configuration.
+
+Shortcut names describe the physical Mac-layout keys, not the modifier sent to
+Linux. Control+Up uses either the generated Super_R or terminal Ctrl and taps
+Super_L for GNOME's overview. While the Desktop shortcuts layer runs, the app
+sets GNOME's overlay key to Super_L only, so physical Control alone is quiet.
+Stop, failed start and uninstall restore the recorded original setting and
+preserve newer external changes. After an emergency exit/crash the setting stays
+until Stop/uninstall restores it. Control+Down is macOS App Exposé, a separate
+current-app overview we do not implement; it is not Show Desktop.
 They are not an arbitrary stack of plugins. Disabling the Command layer removes
 its dependent mappings; emergency stop remains available.
 Implementation: [profiles.py](profiles.py), [config.json](config.json),

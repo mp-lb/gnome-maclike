@@ -149,3 +149,52 @@ class AuditTests(unittest.TestCase):
         after = snapshot(self.root)
         for name, value in before.items():
             self.assertEqual(after[name], value)
+
+    def test_keyboard_update_requires_stopped_session(self):
+        install = self.make_install()
+        with install.operation():
+            pass
+        before = snapshot(self.root)
+        with patch.object(install.runtime, 'ensure_absent', side_effect=RuntimeError('session running')):
+            with self.assertRaisesRegex(RuntimeError, 'session running'):
+                refresh_dashboard(install, keyboard=True)
+        self.assertEqual(snapshot(self.root), before)
+        install.uninstall()
+
+    def test_keyboard_update_recovers_and_uninstalls_without_losing_settings(self):
+        import hashlib
+        for failed_name in ('profiles.py', 'shortcuts.py'):
+            with self.subTest(file=failed_name):
+                install = self.make_install()
+                save_preferences(install.record_dir, DEFAULTS)
+                appearance = Appearance(install.record_dir, MemoryDconf())
+                appearance.apply({DOCK + 'dock-position': "'BOTTOM'"})
+                settings = {name: (install.record_dir/name).read_bytes()
+                            for name in ('preferences.json', 'appearance.json')}
+                info = install.load()
+                for name in ('profiles.py', 'shortcuts.py'):
+                    target = install.app / name
+                    target.write_text('# previous version\n')
+                    info['files']['app/' + name] = hashlib.sha256(target.read_bytes()).hexdigest()
+                install.save(info)
+                with self.assertRaisesRegex(RuntimeError, 'profiles.py'):
+                    refresh_dashboard(install)
+                replace = os.replace
+                def fail(source, target):
+                    if Path(target) == install.app / failed_name:
+                        raise OSError('publication failed')
+                    return replace(source, target)
+                with patch('refresh_gui.os.replace', side_effect=fail):
+                    with self.assertRaisesRegex(OSError, 'publication failed'):
+                        refresh_dashboard(install, keyboard=True)
+                # A different update mode cannot consume this recovery record.
+                with self.assertRaises(RuntimeError):
+                    refresh_dashboard(install)
+                refresh_dashboard(install, keyboard=True)
+                for name, content in settings.items():
+                    self.assertEqual((install.record_dir/name).read_bytes(), content)
+                for name in ('profiles.py', 'shortcuts.py'):
+                    self.assertEqual((install.app/name).read_bytes(), (SOURCE/name).read_bytes())
+                appearance.restore()
+                install.uninstall()
+                self.assertEqual(snapshot(self.root), {})

@@ -54,6 +54,11 @@ def build_catalog():
     add('lock', 'Control+Cmd+Q', 'Lock screen', 'Desktop and capture', 'mapped',
         'Calls GNOME’s lock service. Physical Control + the Command-position key + Q. This is lock, not sleep or logout.',
         'desktop', bindings=[('Control Command Q locks the screen', 'Ctrl-q'), ('Control Command Q locks the screen', 'Super_R-q')])
+    add('overview', 'Control+↑', 'Window overview / Mission Control', 'Desktop and capture', 'mapped',
+        'Opens GNOME’s native overview. Uses the physical Control key, including in standalone terminals. Control alone does not open overview. The original GNOME overlay setting is saved and restored by Stop or uninstall; a newer external edit is preserved.',
+        'desktop', bindings=[('Control Up opens overview', 'Super_R-Up'), ('Control Up opens overview', 'Ctrl-Up')])
+    add('app-expose', 'Control+↓', 'Show current app windows', 'Apps and windows', 'planned',
+        'macOS App Exposé is separate from Show Desktop. GNOME has no matching built-in filtered overview here; use Control+Up for window switching for now.', 'desktop', 'apple', (), 'Later')
 
     # These are examples of the base translation, not per-application patches.
     for id, key, action in [('cut','X','Cut'), ('copy','C','Copy'), ('paste','V','Paste'),
@@ -119,7 +124,9 @@ def build_catalog():
     planned('minimize','Cmd+M','Minimize window','Apps and windows','Reuse GNOME minimize; Command+H currently provides an approximation.')
     planned('launcher','Cmd+Space','Search / launcher','Desktop and capture','Prefer GNOME’s existing overview/search. Do not install a separate launcher or take over input-method shortcuts blindly.')
     planned('delete-word','Option+Backspace','Delete previous word','Text navigation','Translate to a conventional Linux word deletion; check terminals and destructive side effects.',source='text')
-    planned('delete-line','Cmd+Backspace','Delete to line start','Text navigation','Needs selection/deletion semantics that do not delete whole words or files unexpectedly.',source='text')
+    add('delete-line','Cmd+Backspace','Delete to line start','Text navigation','mapped',
+        'Chrome/Chromium only: sends Ctrl+Shift+Backspace for native deletion to line start in text fields. Other apps and standalone terminals keep their existing behavior. A web app or browser-hosted terminal can intercept this shortcut. No selection macro or clipboard change.',
+        'navigation', 'text', [('Command delete to line start', 'BackSpace')])
     planned('paste-style','Cmd+Option+Shift+V','Paste without source formatting','Editing','Choose a bounded convention; some apps already accept Cmd+Shift+V via the base swap.',source='text')
     for id, keys, action in [('capture-screen','Cmd+Shift+3','Capture screen'), ('capture-area','Cmd+Shift+4','Capture area'),
                               ('capture-window','Cmd+Shift+4, then Space','Capture window'), ('capture-ui','Cmd+Shift+5','Screenshot controls')]:
