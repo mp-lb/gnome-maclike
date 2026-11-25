@@ -9,7 +9,7 @@ LAYERS = {
     'control': ('Separate physical Control', 'Control becomes Super in apps. Standalone terminals keep Control.'),
     'terminal': ('Terminal shortcuts', 'Command-C/V copies and pastes; Command-T/W opens and closes tabs.'),
     'desktop': ('Desktop shortcuts', 'Command-Tab switches apps; Q quits; H minimizes; Control-Command-Q locks. Control-Up: overview. Control-Down: show desktop. Control alone does nothing.'),
-    'navigation': ('Text navigation', 'Command-arrows: line/document edges. Option-arrows: words. Shift selects. Command-Backspace: delete to line start in Chrome/Chromium and Codex.'),
+    'navigation': ('Text navigation', 'Command-arrows: line/document edges. Option-arrows: words. Shift selects. Option-Backspace: delete a word. Command-Backspace: delete to line start in Chrome/Chromium and Codex.'),
 }
 DEFAULTS = {'keyboard': 'pc', 'layers': {key: True for key in LAYERS}, 'excluded_apps': [], 'wallpaper_folder': ''}
 
@@ -39,6 +39,7 @@ def compile_profile(source, preferences):
         return {'keymap': [{'name': 'Emergency stop', 'remap': {'Ctrl-Alt-Esc': {'action': 'exit'}}}]}
     source = Path(source)
     config = json.loads((source / 'config.json').read_text())
+    terminal_apps = config['modmap'][0]['application']['only']
     hardware = json.loads((source / (prefs['keyboard'] + '.json')).read_text())
     if not layers['control']:
         config['modmap'] = [config['modmap'][-1]]  # Both physical Controls stay Control.
@@ -99,5 +100,10 @@ def compile_profile(source, preferences):
         # Only normal mode: Command+Option combinations belong to the app.
         keymaps.append({'name': 'Option word navigation', 'mode': 'default', 'exact_match': True,
                         'application': app_match, 'remap': option})
+        # Native Ctrl+Backspace in GUI text fields. Standalone shells already
+        # receive Alt+Backspace, their conventional backward-word command.
+        keymaps.append({'name': 'Option word deletion', 'mode': 'default', 'exact_match': True,
+                        'application': {'only': '/.+/', 'not': terminal_apps + prefs['excluded_apps']},
+                        'remap': {'Alt_L-BackSpace': 'Ctrl_L-BackSpace'}})
     config['keymap'] = keymaps
     return config

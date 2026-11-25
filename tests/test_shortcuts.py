@@ -31,7 +31,7 @@ class CatalogTests(unittest.TestCase):
 
     def test_proposed_shortcuts_are_not_reported_as_implemented(self):
         by_id = {row.id: row for row in CATALOG}
-        for id in ('cycle-window', 'launcher', 'delete-word', 'capture-area'):
+        for id in ('cycle-window', 'launcher', 'capture-area'):
             self.assertEqual(by_id[id].status, 'planned')
         self.assertEqual(by_id['minimize-as-hide'].status, 'approximation')
         self.assertEqual(by_id['copy'].status, 'base')

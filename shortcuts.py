@@ -126,7 +126,9 @@ def build_catalog():
     planned('cycle-window-back','Cmd+Shift+`','Previous window of this app','Apps and windows','Reverse of same-app window cycling.')
     planned('minimize','Cmd+M','Minimize window','Apps and windows','Reuse GNOME minimize; Command+H currently provides an approximation.')
     planned('launcher','Cmd+Space','Search / launcher','Desktop and capture','Prefer GNOME’s existing overview/search. Do not install a separate launcher or take over input-method shortcuts blindly.')
-    planned('delete-word','Option+Backspace','Delete previous word','Text navigation','Translate to a conventional Linux word deletion; check terminals and destructive side effects.',source='text')
+    add('delete-word','Option+Backspace','Delete previous word','Text navigation','mapped',
+        'Sends native Ctrl+Backspace in known non-terminal apps. The app defines word boundaries. Standalone terminals keep Alt+Backspace for the shell to interpret; no terminal-specific deletion sequence is injected.',
+        'navigation', 'text', [('Option word deletion', 'Alt_L-BackSpace')])
     add('delete-line','Cmd+Backspace','Delete to line start','Text navigation','mapped',
         'Chrome/Chromium and Codex (Chatgpt app): sends Ctrl+Shift+Backspace for native deletion to line start in text fields. Other apps and standalone terminals keep their existing behavior. A web app or browser-hosted terminal can intercept this shortcut. No selection macro or clipboard change.',
         'navigation', 'text', [('Command delete to line start', 'BackSpace')])

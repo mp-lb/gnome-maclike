@@ -98,6 +98,20 @@ class ProfileTests(unittest.TestCase):
         prefs['layers']['navigation'] = False
         self.assertFalse(any(k['name'] == rule['name'] for k in compile_profile(SOURCE, prefs)['keymap']))
 
+    def test_word_deletion_preserves_native_terminal_behavior(self):
+        prefs = copy.deepcopy(DEFAULTS)
+        prefs['layers']['terminal'] = False
+        prefs['layers']['control'] = False
+        prefs['excluded_apps'] = ['Chatgpt']
+        rule = next(k for k in compile_profile(SOURCE, prefs)['keymap'] if k['name'] == 'Option word deletion')
+        self.assertEqual(rule['remap'], {'Alt_L-BackSpace': 'Ctrl_L-BackSpace'})
+        self.assertEqual(rule['mode'], 'default')
+        self.assertTrue(rule['exact_match'])
+        terminals = json.loads((SOURCE/'config.json').read_text())['modmap'][0]['application']['only']
+        self.assertEqual(rule['application']['not'], terminals + ['Chatgpt'])
+        prefs['layers']['navigation'] = False
+        self.assertFalse(any(k['name'] == rule['name'] for k in compile_profile(SOURCE, prefs)['keymap']))
+
     def test_invalid_preferences_and_regexes_are_rejected(self):
         prefs = copy.deepcopy(DEFAULTS)
         prefs['excluded_apps'] = ['/.* /']

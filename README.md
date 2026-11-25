@@ -104,6 +104,11 @@ similarly named action has different destructive behavior at line boundaries,
 so this is deliberately a browser-scoped rule. Web apps and browser-hosted
 terminals can still intercept the shortcut.
 
+Option+Backspace sends native Control+Backspace for previous-word deletion in
+known non-terminal apps. Word boundaries follow the app. Standalone terminals
+keep their normal Alt+Backspace behavior for the shell to interpret. Both deletion
+rules belong to Text navigation and respect application exclusions.
+
 Setup is checked only on request or after an explicit operation, never on startup
 or a polling timer. File reads and image decoding run off the GTK event loop.
 

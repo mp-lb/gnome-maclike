@@ -70,7 +70,7 @@ catalog does not fix them or certify live behavior.
 | Decision | Scope |
 | --- | --- |
 | Keep and validate | Base editing/browser shortcuts, app switching, Control+Up overview / Control+Down desktop reveal, quit/lock, the minimize approximation, terminal clipboard and text navigation. |
-| Next | Same-app window cycling, Command+M, launcher/search, word deletion, plain-style paste and basic screenshot entrypoints. |
+| Next | Same-app window cycling, Command+M, launcher/search, plain-style paste and basic screenshot entrypoints. |
 | Later | Capture-to-clipboard variants, fullscreen, browser tab/history translation and a deliberate Files policy. |
 | Not planned | App Exposé (Control+Down deliberately means Show Desktop), bulk-close/hide emulation, global force quit, session/power shortcuts, empty-Trash commands, Apple services/hardware and wholesale app-menu emulation. |
 
