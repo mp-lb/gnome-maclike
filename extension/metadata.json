@@ -1,0 +1,7 @@
+{
+  "uuid": "gnome-maclike@mp-lb.dev",
+  "name": "GNOME MacLike",
+  "description": "Focused application information for the optional GNOME MacLike keyboard session.",
+  "shell-version": ["50"],
+  "version": 1
+}
