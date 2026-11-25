@@ -9,6 +9,9 @@ restore/uninstall controls. This is a first local version, not a new distributio
 manages its lifetime, and supplies a small GNOME adapter for application context
 and normal application quit. There is no custom keyboard driver or mapping engine.
 
+Read [Mental model](MENTAL_MODEL.md) for shortcut precedence, deliberate conflicts,
+compatibility priorities and the boundaries of the current mapping layers.
+
 ## Install and use
 
 Open the GUI as your normal user from this directory:
