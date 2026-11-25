@@ -49,7 +49,7 @@ class Check(Application):
                 assert not window.apply_button.get_sensitive()
                 assert window.health_label.get_text() == 'Not checked'
                 assert all(c.get_sensitive() for c in window.recovery_controls)
-                window.check_button.emit('clicked')
+                window.banner.emit('button-clicked')
                 assert window.refreshing
                 self.phase = 1
             elif self.phase == 1 and window.loaded and not window.gallery_loading:

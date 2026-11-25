@@ -122,9 +122,12 @@ operation remains visible after its status refresh. Checks compare installed
 file hashes, running services and saved keyboard
 choices, read recovery history, and compare tracked desktop settings. The timestamp
 is a snapshot, not continuous monitoring; recheck after changes outside the app.
-The header's Restore button and recovery actions remain available before a check
-or after a failed check. Restore includes an emergency-stop reminder and a terminal
-uninstall command for use if the GUI cannot open.
+The Restore tab remains available before a check or after a failed check. Its
+Troubleshooting section contains an optional Check status action; periodic checks
+are not needed. The initial unchecked state and retryable check errors also offer
+a check action in their banner. The header contains only the status indicator,
+without duplicate Restore or Check status buttons. Restore includes an emergency-stop
+reminder and a terminal uninstall command for use if the GUI cannot open.
 
 The image-only gallery reads local JPEG/PNG/WebP images, filters for at least
 5120×2880 landscape images, and shows names and resolution in the preview. A folder can show

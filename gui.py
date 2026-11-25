@@ -74,10 +74,6 @@ class Window(Adw.ApplicationWindow):
         self.health_box.append(self.health_icon)
         self.health_box.append(self.health_label)
         header.pack_start(self.health_box)
-        self.recovery_button = button('Restore', lambda: self.stack.set_visible_child_name('restore'))
-        header.pack_end(self.recovery_button)
-        self.check_button = button('Check status', self.refresh)
-        header.pack_end(self.check_button)
         root.append(header)
         self.banner = Adw.Banner()
         root.append(self.banner)
@@ -432,6 +428,10 @@ class Window(Adw.ApplicationWindow):
                           'If you change a managed setting elsewhere, its newer value is preserved. '
                           'Modified installation files and unknown files block removal instead of being deleted. '
                           'If authentication or cleanup fails, recovery records remain so you can retry.', 'dim-label'))
+        group = self.group(page, 'Troubleshooting')
+        self.check_button = self.action_row(group, 'Check current status',
+                        'Use this if something seems wrong or you changed settings outside MacLike. It only reads the current state; periodic checks are not needed.',
+                        'Check status', self.refresh, managed=False)
         group = self.group(page, 'Footprint and recovery record')
         self.action_row(group, 'Inspect the saved record', 'Exact installed paths, original settings and managed appearance values.',
                         'View details', self.show_details, managed=False)
@@ -571,7 +571,7 @@ class Window(Adw.ApplicationWindow):
         for css in ('success', 'warning', 'dim-label'):
             self.health_icon.remove_css_class(css)
         self.health_icon.add_css_class({'healthy': 'success', 'attention': 'warning'}.get(info['kind'], 'dim-label'))
-        checked = f'Last checked at {self.checked_at}. This is a snapshot; use Check status after external changes.' if self.checked_at else 'No successful check in this window yet.'
+        checked = f'Last checked at {self.checked_at}. For troubleshooting, use Check status in Restore. Periodic checks are not needed.' if self.checked_at else 'No successful check in this window yet.'
         self.health_box.set_tooltip_text(info['message'] + '\n\n' + checked)
         self.banner.set_title(info['message'])
         self.banner.set_button_label(info.get('action_label', ''))

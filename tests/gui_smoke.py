@@ -21,7 +21,7 @@ class Preview(Application):
         window = self.get_active_window()
         assert not window.loaded and not window.refreshing
         assert not window.apply_button.get_sensitive()
-        window.check_button.emit('clicked')
+        window.banner.emit('button-clicked')
         def ready():
             if window.refreshing or window.gallery_loading:
                 return True
