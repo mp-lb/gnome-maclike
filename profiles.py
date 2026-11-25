@@ -8,7 +8,7 @@ LAYERS = {
     'command': ('Command key', 'Left Alt becomes Command on PC keyboards; left Super becomes Option.'),
     'control': ('Separate physical Control', 'Control becomes Super in apps. Standalone terminals keep Control.'),
     'terminal': ('Terminal shortcuts', 'Command-C/V copies and pastes; Command-T/W opens and closes tabs.'),
-    'desktop': ('Desktop shortcuts', 'Command-Tab switches apps; Q quits; H minimizes; Control-Command-Q locks. Control-Up: overview. Control-Down: show desktop. Control alone does nothing.'),
+    'desktop': ('Desktop shortcuts', 'Command-Tab switches apps; Command-backtick cycles their windows. Q quits; H minimizes; Control-Command-Q locks. Control-Up: overview. Control-Down: show desktop.'),
     'navigation': ('Text navigation', 'Command-arrows: line/document edges. Option-arrows: words. Shift selects. Option-Backspace: delete a word. Command-Backspace: delete to line start in Chrome/Chromium and Codex.'),
 }
 DEFAULTS = {'keyboard': 'pc', 'layers': {key: True for key in LAYERS}, 'excluded_apps': [], 'wallpaper_folder': ''}
@@ -60,6 +60,19 @@ def compile_profile(source, preferences):
         overview_match = {'only': '/.+/'}
         if prefs['excluded_apps']:
             overview_match['not'] = prefs['excluded_apps']
+        # Same lifetime as Command+Tab: hold Super until the existing Command
+        # release hook releases it. Grave is the physical key above Tab.
+        cycle_window = [{'press': 'Grave'}, {'release': 'Grave'}]
+        enter_windows = [{'release': 'Ctrl_R'}, {'press': 'Super_L'},
+                         *cycle_window, {'set_mode': 'switcher'}]
+        keymaps.append({'name': 'Open the native same-app window switcher', 'mode': 'command', 'exact_match': True,
+                        'application': overview_match,
+                        'remap': {'Grave': enter_windows, 'Shift-Grave': enter_windows}})
+        # GNOME may own focus while its switcher is open. Do not require an app
+        # name for subsequent presses. Physical Shift remains held for reverse.
+        keymaps.append({'name': 'Cycle the native same-app window switcher', 'mode': 'switcher', 'exact_match': True,
+                        'application': {'not': prefs['excluded_apps']},
+                        'remap': {'Grave': cycle_window, 'Shift-Grave': cycle_window}})
         # Physical Control is Super_R in apps and Ctrl in standalone terminals
         # (or when the separate-Control layer is off). Tap the managed overlay
         # key, rather than relying on a user-defined toggle-overview binding.

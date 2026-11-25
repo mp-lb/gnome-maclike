@@ -26,12 +26,12 @@ class CatalogTests(unittest.TestCase):
         self.assertIn('text-left', {row.id for row in matching('command left')})
         self.assertIn('text-left', {row.id for row in matching('⌘ ←')})
         self.assertIn('terminal-copy', {row.id for row in matching('copy terminal')})
-        self.assertEqual([row.id for row in matching('backtick', 'planned')], ['cycle-window', 'cycle-window-back'])
+        self.assertEqual([row.id for row in matching('backtick', 'mapped')], ['cycle-window', 'cycle-window-back'])
         self.assertEqual(matching('no-such-action-xyz'), ())
 
     def test_proposed_shortcuts_are_not_reported_as_implemented(self):
         by_id = {row.id: row for row in CATALOG}
-        for id in ('cycle-window', 'launcher', 'capture-area'):
+        for id in ('launcher', 'capture-area'):
             self.assertEqual(by_id[id].status, 'planned')
         self.assertEqual(by_id['minimize-as-hide'].status, 'approximation')
         self.assertEqual(by_id['copy'].status, 'base')

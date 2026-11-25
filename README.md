@@ -205,6 +205,11 @@ Control signal so terminal interrupts and Command shortcuts remain distinct.
 
 - Command behaves as Control by default, including Command-click, copy/paste,
   select all, undo, find, save, new tabs, and app-specific Control shortcuts.
+- Command+backtick (the physical key above Tab): cycle windows of the same app.
+  Hold Command for repeated presses; add Shift to go backward; release Command
+  to select. Uses GNOME's native Super+Above_Tab / Shift+Super+Above_Tab bindings
+  and its app grouping/workspace rules. Belongs to Desktop shortcuts and respects
+  app exclusions. No GNOME binding or application-specific window list is changed.
 - Command+Tab / Shift+Command+Tab: native GNOME application switching. Keep
   Command held and tap Tab to cycle; release Command to select.
 - Command+C/V: Ctrl+Shift+C/V in recognized standalone terminals.

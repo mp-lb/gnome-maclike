@@ -51,7 +51,7 @@ class Preview(Application):
         page = pages[index]
         if page == 'shortcuts-search':
             window.shortcut_search.set_text('backtick')
-            window.shortcut_filter.set_selected(window.shortcut_filter_keys.index('planned'))
+            window.shortcut_filter.set_selected(window.shortcut_filter_keys.index('mapped'))
             window.filter_shortcuts()
             assert {id for id, row in window.shortcut_rows.items() if row.get_visible()} == {'cycle-window', 'cycle-window-back'}
             window.shortcut_rows['cycle-window'].set_expanded(True)

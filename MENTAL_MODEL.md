@@ -122,10 +122,12 @@ customizes the destination binding, our translation may stop producing the
 intended result. Deliberately changing a native binding is a possible future
 choice, but would require recording and restoring its previous value.
 
-For example, Command+backtick is a candidate for GNOME's existing same-app window
-switcher, which normally uses Super plus the key above Tab. This would reuse a
-desktop action, not require a Chrome-specific window-cycling implementation.
-**That Command mapping is proposed, not implemented by this document.**
+For example, Command+backtick uses GNOME's existing same-app window switcher,
+which uses Super plus the physical key above Tab. Command holds the native
+switcher open across presses; Shift reverses direction, and Command release
+releases Super and selects the window. It shares the existing app-switcher mode
+and emergency-stop path. GNOME owns app grouping and workspace behavior; no
+application-specific window enumeration is introduced.
 [GNOME shortcut reference](https://help.gnome.org/gnome-help/shell-keyboard-shortcuts.html)
 
 ## Which breakage is acceptable?

@@ -133,6 +133,27 @@ class ProfileTests(unittest.TestCase):
         prefs['layers']['desktop'] = False
         self.assertFalse(any(k['name'] == rule['name'] for k in compile_profile(SOURCE,prefs)['keymap']))
 
+    def test_window_switcher_holds_modifier_until_command_release(self):
+        for keyboard, command_key in [('pc', 'Alt_L'), ('apple', 'Super_L')]:
+            prefs = copy.deepcopy(DEFAULTS); prefs['keyboard'] = keyboard
+            profile = compile_profile(SOURCE, prefs)
+            enter = next(k for k in profile['keymap'] if k['name'] == 'Open the native same-app window switcher')
+            cycle = next(k for k in profile['keymap'] if k['name'] == 'Cycle the native same-app window switcher')
+            self.assertEqual(enter['mode'], 'command')
+            self.assertEqual(cycle['mode'], 'switcher')
+            self.assertNotIn('only', cycle['application'])
+            for key in ('Grave', 'Shift-Grave'):
+                self.assertEqual(enter['remap'][key], [{'release':'Ctrl_R'}, {'press':'Super_L'},
+                    {'press':'Grave'}, {'release':'Grave'}, {'set_mode':'switcher'}])
+                self.assertEqual(cycle['remap'][key], [{'press':'Grave'}, {'release':'Grave'}])
+            release = profile['modmap'][-1]['remap'][command_key]['release']
+            self.assertIn({'release':'Super_L'}, release)
+            self.assertIn({'set_mode':'default'}, release)
+            emergency = next(k for k in profile['keymap'] if k['name'] == 'Emergency stop with Command held')
+            self.assertIn('switcher', emergency['mode'])
+            prefs['layers']['desktop'] = False
+            self.assertFalse(any('same-app window switcher' in k['name'] for k in compile_profile(SOURCE, prefs)['keymap']))
+
     def test_desktop_toggle_works_without_focused_app_and_respects_layers(self):
         prefs = copy.deepcopy(DEFAULTS)
         for separate in (False, True):

@@ -122,8 +122,11 @@ def build_catalog():
 
     def planned(id, keys, action, category, detail, priority='Next', source='apple'):
         add(id, keys, action, category, 'planned', 'Not mapped yet. '+detail, '', source, priority=priority)
-    planned('cycle-window','Cmd+`','Next window of this app','Apps and windows','Reuse GNOME’s native same-app switcher; validate hold/release and keyboard layouts.')
-    planned('cycle-window-back','Cmd+Shift+`','Previous window of this app','Apps and windows','Reverse of same-app window cycling.')
+    for suffix, shift, action in [('', '', 'Next window of this app'), ('-back', 'Shift+', 'Previous window of this app')]:
+        key = 'Shift-Grave' if shift else 'Grave'
+        add('cycle-window'+suffix, 'Cmd+'+shift+'`', action, 'Apps and windows', 'mapped',
+            'Uses GNOME’s native same-app window switcher. Hold Command and tap the physical key above Tab to cycle; add Shift to reverse. Release Command to select. GNOME decides which windows belong to an app and workspace. Requires its Super+Above_Tab / Shift+Super+Above_Tab bindings.',
+            'desktop', 'gnome', [('Open the native same-app window switcher', key), ('Cycle the native same-app window switcher', key)])
     planned('minimize','Cmd+M','Minimize window','Apps and windows','Reuse GNOME minimize; Command+H currently provides an approximation.')
     planned('launcher','Cmd+Space','Search / launcher','Desktop and capture','Prefer GNOME’s existing overview/search. Do not install a separate launcher or take over input-method shortcuts blindly.')
     add('delete-word','Option+Backspace','Delete previous word','Text navigation','mapped',
